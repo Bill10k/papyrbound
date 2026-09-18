@@ -1,6 +1,10 @@
-/* Papyrbound: a modern desktop library with warm print-inspired accents. */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Papyrbound: paper, graphite, and printing ink. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
   --mono-0: oklch(1 0 0);
   --mono-50: oklch(0.985 0 0);
@@ -15,26 +19,25 @@
   --mono-900: oklch(0.18 0 0);
   --mono-950: oklch(0.12 0 0);
 
-  /* Semantic color pairs, following shadcn's token convention. */
-  --background: oklch(0.15 0.005 70);
-  --foreground: oklch(0.94 0.008 80);
-  --card: oklch(0.18 0.005 70);
-  --card-foreground: oklch(0.94 0.008 80);
-  --popover: oklch(0.2 0.005 70);
-  --popover-foreground: oklch(0.94 0.008 80);
-  --primary: oklch(0.76 0.13 76);
-  --primary-foreground: oklch(0.19 0.03 70);
-  --secondary: oklch(0.23 0.005 70);
-  --secondary-foreground: oklch(0.9 0.008 80);
-  --muted: oklch(0.23 0.005 70);
-  --muted-foreground: oklch(0.65 0.008 80);
-  --accent: oklch(0.27 0.012 70);
-  --accent-foreground: oklch(0.94 0.008 80);
+  --background: var(--mono-100);
+  --foreground: var(--mono-950);
+  --card: var(--mono-0);
+  --card-foreground: var(--mono-950);
+  --popover: var(--mono-0);
+  --popover-foreground: var(--mono-950);
+  --primary: var(--mono-950);
+  --primary-foreground: var(--mono-50);
+  --secondary: var(--mono-100);
+  --secondary-foreground: var(--mono-900);
+  --muted: var(--mono-100);
+  --muted-foreground: var(--mono-600);
+  --accent: var(--mono-200);
+  --accent-foreground: var(--mono-950);
   --destructive: oklch(0.53 0.2 27);
   --destructive-foreground: var(--mono-0);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.76 0.13 76);
+  --border: var(--mono-200);
+  --input: var(--mono-300);
+  --ring: var(--mono-500);
 
   --chart-1: var(--mono-950);
   --chart-2: var(--mono-700);
@@ -45,17 +48,11 @@
   --radius: 0.625rem;
   --shadow-color: 0 0 0;
   --elevation-xs: 0 1px 2px oklch(var(--shadow-color) / 0.04);
-  --elevation-sm: 0 1px 3px oklch(var(--shadow-color) / 0.08),
-    0 1px 2px oklch(var(--shadow-color) / 0.05);
+  --elevation-sm: 0 1px 3px oklch(var(--shadow-color) / 0.08), 0 1px 2px oklch(var(--shadow-color) / 0.05);
   --elevation-md: 0 8px 24px oklch(var(--shadow-color) / 0.08);
   --duration-fast: 120ms;
   --duration-normal: 200ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-
-  --content-narrow: 42rem;
-  --content-wide: 72rem;
-  --page-gutter: clamp(1.25rem, 4vw, 3rem);
-  --section-space: clamp(3.5rem, 8vw, 7rem);
 }
 
 .dark {
@@ -81,53 +78,94 @@
   --ring: var(--mono-400);
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
+@theme inline {
+  --color-mono-0: var(--mono-0);
+  --color-mono-50: var(--mono-50);
+  --color-mono-100: var(--mono-100);
+  --color-mono-200: var(--mono-200);
+  --color-mono-300: var(--mono-300);
+  --color-mono-400: var(--mono-400);
+  --color-mono-500: var(--mono-500);
+  --color-mono-600: var(--mono-600);
+  --color-mono-700: var(--mono-700);
+  --color-mono-800: var(--mono-800);
+  --color-mono-900: var(--mono-900);
+  --color-mono-950: var(--mono-950);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --shadow-xs: var(--elevation-xs);
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
 }
 
-* {
-  border-color: var(--border);
-  margin: 0;
-}
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 
-html,
-body {
-  min-height: 100%;
-}
+  html,
+  body {
+    min-height: 100%;
+  }
 
-html {
-  background: var(--background);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html {
+    background: var(--background);
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
-  text-rendering: optimizeLegibility;
-}
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), sans-serif;
+    text-rendering: optimizeLegibility;
+  }
 
-button,
-input {
-  font: inherit;
-}
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
 
-button,
-[role="button"] {
-  cursor: pointer;
-}
+  button:disabled {
+    cursor: default;
+  }
 
-button:disabled {
-  cursor: default;
-}
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
 
-::selection {
-  background: var(--foreground);
-  color: var(--background);
-}
-
-:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
