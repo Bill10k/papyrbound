@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import Breadcrumbs from "./components/breadcrumbs";
 import Sidebar from "./components/sidebar/sidebar";
 
 const haffer = localFont({
@@ -27,11 +28,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${haffer.variable} ${geistMono.variable}`}>
-      <body className="grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] bg-mono-200">
+      <body className="grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] bg-mono-100">
         <div className="pl-1">
           <Sidebar />
         </div>
-        <div className="min-w-0 p-1 pl-0">{children}</div>
+        <div className="min-w-0 p-1 pl-0">
+          <Breadcrumbs />
+          {children}
+        </div>
       </body>
     </html>
   );
