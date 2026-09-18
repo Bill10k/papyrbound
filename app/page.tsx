@@ -1,5 +1,3 @@
-import Library from "./library";
-
 export default function Home() {
-  return <Library />;
+  return <main className="min-h-dvh" aria-label="Papyrbound blank canvas" />;
 }
