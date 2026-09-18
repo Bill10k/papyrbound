@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
 /* Papyrbound: paper, graphite, and printing ink. */
 :root {
   color-scheme: light;
@@ -19,25 +17,32 @@
   --mono-900: oklch(0.18 0 0);
   --mono-950: oklch(0.12 0 0);
 
-  --background: var(--mono-100);
-  --foreground: var(--mono-950);
+  --background: var(--mono-50);
+  --foreground: var(--mono-800);
   --card: var(--mono-0);
-  --card-foreground: var(--mono-950);
+  --card-foreground: var(--mono-800);
   --popover: var(--mono-0);
-  --popover-foreground: var(--mono-950);
-  --primary: var(--mono-950);
-  --primary-foreground: var(--mono-50);
+  --popover-foreground: var(--mono-800);
+  --primary: var(--mono-800);
+  --primary-foreground: var(--mono-100);
   --secondary: var(--mono-100);
   --secondary-foreground: var(--mono-900);
   --muted: var(--mono-100);
   --muted-foreground: var(--mono-600);
   --accent: var(--mono-200);
-  --accent-foreground: var(--mono-950);
+  --accent-foreground: var(--mono-800);
   --destructive: oklch(0.53 0.2 27);
   --destructive-foreground: var(--mono-0);
   --border: var(--mono-200);
   --input: var(--mono-300);
   --ring: var(--mono-500);
+
+  /* Osmo-inspired light rail: paper over a soft gray canvas. */
+  --sidebar: var(--mono-50);
+  --sidebar-foreground: var(--mono-800);
+  --sidebar-muted: var(--mono-600);
+  --sidebar-accent: var(--mono-200);
+  --sidebar-border: var(--mono-200);
 
   --chart-1: var(--mono-950);
   --chart-2: var(--mono-700);
@@ -53,29 +58,6 @@
   --duration-fast: 120ms;
   --duration-normal: 200ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.dark {
-  color-scheme: dark;
-  --background: var(--mono-950);
-  --foreground: var(--mono-50);
-  --card: var(--mono-900);
-  --card-foreground: var(--mono-50);
-  --popover: var(--mono-900);
-  --popover-foreground: var(--mono-50);
-  --primary: var(--mono-50);
-  --primary-foreground: var(--mono-950);
-  --secondary: var(--mono-800);
-  --secondary-foreground: var(--mono-50);
-  --muted: var(--mono-800);
-  --muted-foreground: var(--mono-400);
-  --accent: var(--mono-700);
-  --accent-foreground: var(--mono-50);
-  --destructive: oklch(0.65 0.2 25);
-  --destructive-foreground: var(--mono-0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: var(--mono-400);
 }
 
 @theme inline {
@@ -110,13 +92,18 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-haffer);
   --font-mono: var(--font-geist-mono);
   /* Border-radius presets: rounded-xs through rounded-full. */
   --radius-xs: 0.25rem;
@@ -150,7 +137,7 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: var(--font-geist-sans), sans-serif;
+    font-family: var(--font-haffer), sans-serif;
     font-weight: 500;
     text-rendering: optimizeLegibility;
   }
