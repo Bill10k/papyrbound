@@ -1,10 +1,6 @@
-@import "tailwindcss";
-
-@custom-variant dark (&:is(.dark *));
-
-/* Papyrbound: paper, graphite, and printing ink. */
+/* Papyrbound: a modern desktop library with warm print-inspired accents. */
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
   --mono-0: oklch(1 0 0);
   --mono-50: oklch(0.985 0 0);
@@ -20,25 +16,25 @@
   --mono-950: oklch(0.12 0 0);
 
   /* Semantic color pairs, following shadcn's token convention. */
-  --background: var(--mono-100);
-  --foreground: var(--mono-950);
-  --card: var(--mono-0);
-  --card-foreground: var(--mono-950);
-  --popover: var(--mono-0);
-  --popover-foreground: var(--mono-950);
-  --primary: var(--mono-950);
-  --primary-foreground: var(--mono-50);
-  --secondary: var(--mono-100);
-  --secondary-foreground: var(--mono-900);
-  --muted: var(--mono-100);
-  --muted-foreground: var(--mono-600);
-  --accent: var(--mono-200);
-  --accent-foreground: var(--mono-950);
+  --background: oklch(0.15 0.005 70);
+  --foreground: oklch(0.94 0.008 80);
+  --card: oklch(0.18 0.005 70);
+  --card-foreground: oklch(0.94 0.008 80);
+  --popover: oklch(0.2 0.005 70);
+  --popover-foreground: oklch(0.94 0.008 80);
+  --primary: oklch(0.76 0.13 76);
+  --primary-foreground: oklch(0.19 0.03 70);
+  --secondary: oklch(0.23 0.005 70);
+  --secondary-foreground: oklch(0.9 0.008 80);
+  --muted: oklch(0.23 0.005 70);
+  --muted-foreground: oklch(0.65 0.008 80);
+  --accent: oklch(0.27 0.012 70);
+  --accent-foreground: oklch(0.94 0.008 80);
   --destructive: oklch(0.53 0.2 27);
   --destructive-foreground: var(--mono-0);
-  --border: var(--mono-200);
-  --input: var(--mono-300);
-  --ring: var(--mono-500);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.76 0.13 76);
 
   --chart-1: var(--mono-950);
   --chart-2: var(--mono-700);
@@ -85,70 +81,53 @@
   --ring: var(--mono-400);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-
-  --shadow-xs: var(--elevation-xs);
-  --shadow-sm: var(--elevation-sm);
-  --shadow-md: var(--elevation-md);
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
-@layer base {
-  * {
-    border-color: var(--border);
-  }
+* {
+  border-color: var(--border);
+  margin: 0;
+}
 
-  html {
-    background: var(--background);
-  }
+html,
+body {
+  min-height: 100%;
+}
 
-  body {
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-geist-sans), sans-serif;
-    text-rendering: optimizeLegibility;
-  }
+html {
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  ::selection {
-    background: var(--foreground);
-    color: var(--background);
-  }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  text-rendering: optimizeLegibility;
+}
 
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
+button,
+input {
+  font: inherit;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
