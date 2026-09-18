@@ -54,6 +54,7 @@ export default function Library() {
   const [query, setQuery] = useState("");
   const [activeFolder, setActiveFolder] = useState("All books");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All");
   const filteredBooks = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return books.filter((book) => {
@@ -63,165 +64,184 @@ export default function Library() {
         || (activeFolder === "Manga" && book.series === "Ashfall")
         || (activeFolder === "Art books" && book.series === "Verdant City")
         || (activeFolder === "PDF library" && book.format === "PDF");
-      return matchesQuery && (onlyFavorites ? Boolean(book.favorite) : matchesFolder);
+      const matchesStatus = statusFilter === "All"
+        || (statusFilter === "Reading" && book.progress > 0 && book.progress < 100)
+        || (statusFilter === "Unread" && book.progress === 0)
+        || (statusFilter === "Completed" && book.progress === 100)
+        || (statusFilter === "Favorites" && Boolean(book.favorite));
+      return matchesQuery && (onlyFavorites ? Boolean(book.favorite) : matchesFolder && matchesStatus);
     });
-  }, [activeFolder, query, onlyFavorites]);
+  }, [activeFolder, query, onlyFavorites, statusFilter]);
   const selected = filteredBooks.find((book) => book.id === selectedId) ?? filteredBooks[0] ?? books[0];
   const selectedIndex = Math.max(0, filteredBooks.findIndex((book) => book.id === selected.id));
-  const flowBooks = filteredBooks.length > 0
-    ? Array.from({ length: Math.min(6, filteredBooks.length) }, (_, index) => filteredBooks[(selectedIndex + index) % filteredBooks.length])
-    : [];
 
-  const eyebrowClass = "text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground";
-  const iconButtonClass = "inline-flex size-[30px] items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground";
-  const navItemClass = "grid min-h-9 w-full grid-cols-[20px_1fr_auto] items-center rounded-md border-0 px-2.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/60 hover:text-accent-foreground";
+  const eyebrowClass = "text-[10px] font-bold uppercase tracking-[0.18em] text-mono-400";
+  const iconButtonClass = "inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-mono-300 transition-colors hover:bg-white hover:text-mono-950";
+
+  function stepSelection(direction: number) {
+    if (filteredBooks.length < 2) return;
+    const nextIndex = (selectedIndex + direction + filteredBooks.length) % filteredBooks.length;
+    setSelectedId(filteredBooks[nextIndex].id);
+  }
 
   return (
-    <main className="h-dvh min-h-[680px] overflow-hidden bg-background text-foreground tracking-[-0.01em] max-[820px]:h-auto max-[820px]:min-h-dvh max-[820px]:overflow-visible">
-      <div className="grid h-9 grid-cols-[1fr_auto_1fr] items-center border-b bg-card px-3.5 select-none">
-        <div className="flex gap-1.5" aria-hidden="true">
-          <span className="size-2 rounded-full bg-mono-500" />
-          <span className="size-2 rounded-full bg-mono-600" />
-          <span className="size-2 rounded-full bg-mono-700" />
-        </div>
-        <div className="flex items-center gap-1.5 text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
-          <span className="inline-flex size-4 items-center justify-center rounded-sm bg-primary text-[9px] font-extrabold text-primary-foreground">P</span>
-          Papyrbound
-        </div>
-        <button className="justify-self-end p-1 text-muted-foreground hover:text-foreground" aria-label="Application menu"><Icon name="menu" size={15} /></button>
-      </div>
-
-      <div className="grid h-[calc(100dvh-36px)] min-h-[644px] grid-cols-[232px_minmax(0,1fr)] max-[1100px]:grid-cols-[205px_minmax(0,1fr)] max-[820px]:block max-[820px]:h-auto max-[820px]:min-h-[calc(100dvh-36px)]">
-        <aside className="flex min-w-0 flex-col border-r bg-card max-[820px]:hidden">
-          <div className="flex h-[78px] items-center justify-between border-b px-[18px]">
-            <div><span className={eyebrowClass}>Local library</span><h1 className="mt-1 text-base font-semibold tracking-[-0.025em]">My collection</h1></div>
-            <button className={`${iconButtonClass} border`} aria-label="Add library"><Icon name="plus" size={16} /></button>
+    <main className="min-h-dvh overflow-hidden bg-mono-100 p-3 text-mono-50 tracking-[-0.02em] sm:p-5">
+      <div className="mx-auto grid min-h-[calc(100dvh-24px)] max-w-[1800px] grid-cols-[244px_minmax(0,1fr)] overflow-hidden rounded-[28px] bg-mono-950 shadow-[0_30px_90px_rgb(0_0_0/0.18)] max-[860px]:block sm:min-h-[calc(100dvh-40px)]">
+        <aside className="flex min-h-0 flex-col border-r border-white/10 bg-mono-900 px-5 py-6 max-[860px]:hidden">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[22px] font-black uppercase tracking-[-0.08em]">Papyr</span>
+            <span className="grid size-9 place-items-center text-3xl font-light text-mono-50" aria-hidden="true">✦</span>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-2.5" aria-label="Library folders">
-            <p className={`${eyebrowClass} mx-2.5 mt-3.5 mb-2`}>Browse</p>
-            {folders.map((folder, index) => {
-              const isActive = activeFolder === folder && !onlyFavorites;
-              return <button key={folder} aria-current={isActive ? "page" : undefined} onClick={() => { setActiveFolder(folder); setOnlyFavorites(false); }} className={`${navItemClass} ${isActive ? "bg-accent text-accent-foreground" : ""}`}><Icon name={index === 0 ? "book" : "folder"} size={16} /><span>{folder}</span><span className="text-[10px] opacity-60">{index === 0 ? 12 : [8, 2, 2, 2][index - 1]}</span></button>;
-            })}
-            <p className={`${eyebrowClass} mx-2.5 mt-5 mb-2`}>Reading lists</p>
-            <button onClick={() => setOnlyFavorites(true)} className={`${navItemClass} ${onlyFavorites ? "bg-accent text-accent-foreground" : ""}`}><Icon name="heart" size={16} /><span>Favorites</span><span className="text-[10px] opacity-60">5</span></button>
-            <button className={navItemClass}><Icon name="bookmark" size={16} /><span>Reading now</span><span className="text-[10px] opacity-60">6</span></button>
-            <button className={navItemClass}><Icon name="clock" size={16} /><span>Recently added</span></button>
+          <nav className="mt-16" aria-label="Library folders">
+            <p className={`${eyebrowClass} px-3`}>Collection</p>
+            <div className="mt-4 space-y-1.5">
+              {folders.map((folder, index) => {
+                const isActive = activeFolder === folder && !onlyFavorites;
+                return (
+                  <button
+                    key={folder}
+                    aria-current={isActive ? "page" : undefined}
+                    onClick={() => { setActiveFolder(folder); setOnlyFavorites(false); setStatusFilter("All"); }}
+                    className={`group flex h-12 w-full items-center justify-between rounded-xl px-3 text-left text-[13px] transition-colors ${isActive ? "bg-mono-50 text-mono-950" : "text-mono-400 hover:bg-white/[0.06] hover:text-mono-50"}`}
+                  >
+                    <span className="flex items-center gap-3"><Icon name={index === 0 ? "book" : "folder"} size={17} />{folder}</span>
+                    <span className={`text-[10px] ${isActive ? "text-mono-600" : "text-mono-600 group-hover:text-mono-400"}`}>{index === 0 ? 12 : [8, 2, 2, 2][index - 1]}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className={`${eyebrowClass} mt-10 px-3`}>Your space</p>
+            <div className="mt-4 space-y-1.5">
+              <button onClick={() => { setOnlyFavorites(true); setStatusFilter("Favorites"); }} className={`flex h-12 w-full items-center justify-between rounded-xl px-3 text-[13px] transition-colors ${onlyFavorites ? "bg-mono-50 text-mono-950" : "text-mono-400 hover:bg-white/[0.06] hover:text-mono-50"}`}>
+                <span className="flex items-center gap-3"><Icon name="heart" size={17} />Favorites</span><span className="text-[10px] opacity-60">5</span>
+              </button>
+              <button className="flex h-12 w-full items-center gap-3 rounded-xl px-3 text-[13px] text-mono-400 transition-colors hover:bg-white/[0.06] hover:text-mono-50"><Icon name="bookmark" size={17} />Reading now</button>
+              <button className="flex h-12 w-full items-center gap-3 rounded-xl px-3 text-[13px] text-mono-400 transition-colors hover:bg-white/[0.06] hover:text-mono-50"><Icon name="clock" size={17} />Recently added</button>
+            </div>
           </nav>
 
-          <div className="border-t px-4 pt-3.5 pb-3">
-            <div className="flex justify-between text-[9px] text-muted-foreground"><span>Library storage</span><span>4.8 / 12 GB</span></div>
-            <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-muted"><span className="block h-full w-2/5 rounded-full bg-primary" /></div>
-            <div className="mt-4 grid grid-cols-[30px_1fr_auto] items-center gap-2.5">
-              <span className="flex size-[30px] items-center justify-center rounded-full border bg-muted text-[9px] font-bold text-muted-foreground">JD</span>
-              <div><strong className="block text-[10px] font-semibold text-card-foreground">Joshua&apos;s library</strong><small className="mt-0.5 block text-[9px] text-muted-foreground">Last scan 2m ago</small></div>
-              <button className="p-1 text-muted-foreground hover:text-foreground" aria-label="Library settings"><Icon name="settings" size={17} /></button>
+          <div className="mt-auto rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-center justify-between text-[10px] text-mono-400"><span>Local library</span><span>40%</span></div>
+            <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/10"><span className="block h-full w-2/5 rounded-full bg-mono-50" /></div>
+            <div className="mt-5 flex items-center gap-3">
+              <span className="grid size-9 place-items-center rounded-full bg-mono-50 text-[10px] font-bold text-mono-950">JD</span>
+              <div className="min-w-0 flex-1"><strong className="block truncate text-xs font-semibold">Joshua&apos;s library</strong><span className="mt-0.5 block text-[9px] text-mono-500">Synced 2m ago</span></div>
+              <Icon name="more" size={16} />
             </div>
           </div>
         </aside>
 
-        <section className="grid min-w-0 grid-rows-[52px_minmax(0,1fr)_32px]">
-          <header className="grid grid-cols-[1fr_auto_1fr] items-center border-b bg-card px-3 max-[700px]:grid-cols-[auto_1fr]">
-            <div className="flex items-center gap-0.5">
-              <button className={iconButtonClass} aria-label="Previous book"><Icon name="arrowLeft" size={19} /></button>
-              <button className={iconButtonClass} aria-label="Next book"><Icon name="arrowRight" size={19} /></button>
-              <span className="mx-1 h-5 w-px bg-border" />
-              <button className={iconButtonClass} aria-label="Library settings"><Icon name="settings" size={18} /></button>
-              <button className={`${iconButtonClass} max-[700px]:hidden`} aria-label="Book information"><Icon name="book" size={17} /></button>
+        <section id="library-scroll" className="min-w-0 overflow-y-auto">
+          <header className="sticky top-0 z-50 flex h-[76px] items-center justify-between border-b border-white/10 bg-mono-950/90 px-5 backdrop-blur-xl sm:px-8">
+            <div className="flex items-center gap-3 min-[861px]:hidden"><span className="text-lg font-black uppercase tracking-[-0.07em]">Papyr</span></div>
+            <div className="flex items-center gap-4 max-[860px]:ml-auto">
+              <button className="flex items-center gap-2 text-xs text-mono-300 hover:text-white"><Icon name="menu" size={17} /> <span className="max-[540px]:hidden">Menu</span></button>
+              <span className="h-5 w-px bg-white/10" />
+              <span className="text-xs text-mono-500">{books.length} titles</span>
             </div>
-            <div className="text-center max-[700px]:text-left"><strong className="block text-base font-semibold tracking-[-0.02em]">{onlyFavorites ? "Favorites" : activeFolder}</strong><span className="text-[9px] text-muted-foreground">{query ? `${filteredBooks.length} search results` : `${filteredBooks.length} volumes`}</span></div>
-            <div className="flex items-center justify-end gap-2 max-[700px]:col-span-2 max-[700px]:mt-2 max-[700px]:hidden">
-              <button className={iconButtonClass} aria-label="Cover flow view"><Icon name="grid" size={17} /></button>
-              <label className="flex h-8 w-[230px] items-center gap-2 rounded-md border bg-background px-2.5 text-muted-foreground focus-within:border-ring max-[1000px]:w-[180px]">
-                <Icon name="search" size={15} /><input className="w-full min-w-0 bg-transparent text-[10px] text-foreground outline-none placeholder:text-muted-foreground/50" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Type to search" aria-label="Search your library" />
+            <div className="flex items-center gap-2">
+              <label className="flex h-11 w-[240px] items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.05] px-4 text-mono-400 transition-colors focus-within:border-white/30 max-[600px]:w-11 max-[600px]:justify-center max-[600px]:px-0">
+                <Icon name="search" size={16} />
+                <input className="min-w-0 flex-1 bg-transparent text-xs text-white outline-none placeholder:text-mono-500 max-[600px]:hidden" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the archive" aria-label="Search your library" />
               </label>
+              <button className={iconButtonClass} aria-label="Library settings"><Icon name="settings" size={17} /></button>
+              <button className="ml-1 flex h-11 items-center gap-2 rounded-full bg-mono-50 px-5 text-xs font-bold text-mono-950 transition-transform hover:scale-[1.03] max-[480px]:hidden"><Icon name="plus" size={16} /> Add title</button>
             </div>
           </header>
 
-          <div className="grid min-h-0 grid-rows-[minmax(280px,1fr)_minmax(250px,1.15fr)] bg-background max-[700px]:grid-rows-[310px_minmax(300px,1fr)]">
-            <section className="relative min-h-0 overflow-hidden border-b bg-mono-950 [perspective:1200px]" aria-label="Cover flow">
-              <div className="absolute top-3 left-3 z-30 font-mono text-2xl font-light text-muted-foreground">{filteredBooks.length ? selectedIndex + 1 : 0}<span className="text-base text-mono-700">/{filteredBooks.length}</span></div>
-              {filteredBooks.length === 0 ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex h-full flex-col items-center justify-center text-muted-foreground"><Icon name="search" size={30} /><h2 className="mt-3 text-sm text-foreground">No books found</h2><p className="mt-1 text-[10px]">Try another title, creator, or genre.</p></motion.div>
-              ) : (
-                <div className="absolute inset-0">
-                  {flowBooks.map((book, offset) => {
-                    const isSelected = offset === 0;
-                    return (
-                      <motion.button
-                        key={book.id}
-                        className="absolute top-1/2 left-[56%] aspect-[2/3] w-[176px] origin-center overflow-visible border-0 bg-transparent p-0 text-left max-[1050px]:w-[154px] max-[700px]:left-[48%] max-[700px]:w-[132px]"
-                        style={{ zIndex: 20 - offset, transformStyle: "preserve-3d" }}
-                        initial={reduceMotion ? false : { opacity: 0, x: 120, y: -145, scale: .86 }}
-                        animate={{
-                          opacity: isSelected ? 1 : Math.max(.18, .67 - offset * .1),
-                          x: isSelected ? -88 : 95 + offset * 48,
-                          y: isSelected ? -154 : -142 + offset * 3,
-                          scale: isSelected ? 1 : Math.max(.68, .94 - offset * .045),
-                          rotateY: isSelected ? 0 : -17,
-                        }}
-                        transition={{ duration: reduceMotion ? 0 : .48, ease: [0.22, 1, 0.36, 1] }}
-                        onClick={() => setSelectedId(book.id)}
-                        aria-label={`Select ${book.title}`}
-                      >
-                        <span className={`relative block h-full w-full overflow-hidden border bg-card shadow-[0_18px_45px_rgb(0_0_0/0.45)] ${isSelected ? "border-foreground/60" : "border-border"}`}>
-                          <Image src={book.cover} alt={`${book.title} cover`} fill sizes="176px" className="object-cover" priority={isSelected} />
-                          <span className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90" />
-                          <span className="absolute bottom-12 left-3 text-[8px] font-bold uppercase tracking-[0.13em] text-white/70">{book.series}</span>
-                          <span className="absolute bottom-4 left-3 max-w-[calc(100%-24px)] font-serif text-xl leading-none font-semibold text-white">{book.title}</span>
-                          {book.favorite && <span className="absolute top-0 right-3 flex h-9 w-6 items-center justify-center bg-primary text-primary-foreground"><Icon name="bookmark" size={13} /></span>}
-                        </span>
-                        {isSelected && <span className="pointer-events-none absolute top-[calc(100%+2px)] left-0 block h-full w-full origin-top scale-y-[-1] overflow-hidden opacity-20 [mask-image:linear-gradient(to_bottom,black,transparent_55%)]"><Image src={book.cover} alt="" fill sizes="176px" className="object-cover" /></span>}
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            <section className="grid min-h-0 grid-rows-[42px_31px_minmax(0,1fr)] bg-card" aria-label="Library table">
-              <div className="flex items-center justify-between border-b px-2.5">
-                <div className="flex items-center gap-0.5">
-                  <button className={iconButtonClass} aria-label="Add note"><Icon name="more" size={17} /></button>
-                  <button className={iconButtonClass} aria-label="Edit metadata"><Icon name="settings" size={16} /></button>
-                  <button className={iconButtonClass} aria-label="Mark as read"><Icon name="check" size={17} /></button>
-                  <button className={iconButtonClass} aria-label="Add to favorites"><Icon name="heart" size={16} /></button>
-                  <button className={iconButtonClass} aria-label="Add to reading list"><Icon name="bookmark" size={16} /></button>
-                </div>
-                <div className="flex items-center gap-2 text-[9px] text-muted-foreground"><span>{selected.title}</span><button className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-foreground"><Icon name="book" size={14} /> Open</button></div>
+          <div className="px-5 pt-12 pb-16 sm:px-8 lg:px-12 lg:pt-16">
+            <motion.div initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .55, ease: [0.22, 1, 0.36, 1] }} className="flex items-end justify-between gap-8">
+              <div>
+                <p className={eyebrowClass}>Private archive · Updated today</p>
+                <h1 className="mt-3 text-[clamp(3.6rem,7.5vw,8.4rem)] leading-[0.78] font-semibold tracking-[-0.085em]">Your<br />library.</h1>
               </div>
-
-              <div className="overflow-hidden border-b bg-muted/50">
-                <div className="grid h-full min-w-[980px] grid-cols-[42px_minmax(170px,1.4fr)_minmax(230px,2fr)_100px_70px_80px_110px_60px_100px] items-center px-2 text-[9px] text-muted-foreground"><span>#</span><span>Title</span><span>File name</span><span>Current page</span><span>Pages</span><span>Size</span><span>Publication date</span><span>Read</span><span>Rating</span></div>
+              <div className="mb-1 grid grid-cols-2 gap-x-10 gap-y-5 max-[700px]:hidden">
+                <div><strong className="block text-3xl font-semibold tracking-[-0.06em]">{books.length}</strong><span className="mt-1 block text-[10px] uppercase tracking-[0.15em] text-mono-500">Titles</span></div>
+                <div><strong className="block text-3xl font-semibold tracking-[-0.06em]">06</strong><span className="mt-1 block text-[10px] uppercase tracking-[0.15em] text-mono-500">Series</span></div>
+                <div><strong className="block text-3xl font-semibold tracking-[-0.06em]">31h</strong><span className="mt-1 block text-[10px] uppercase tracking-[0.15em] text-mono-500">Read</span></div>
+                <div><strong className="block text-3xl font-semibold tracking-[-0.06em]">04</strong><span className="mt-1 block text-[10px] uppercase tracking-[0.15em] text-mono-500">Active</span></div>
               </div>
+            </motion.div>
 
-              <div className="min-h-0 overflow-auto">
-                <div className="min-w-[980px]">
-                  {filteredBooks.map((book, index) => {
-                    const isSelected = selected.id === book.id;
-                    const currentPage = book.progress > 0 ? Math.max(1, Math.round(book.pages * book.progress / 100)) : "–";
-                    return (
+            <div className="mt-14 flex items-center gap-2 overflow-x-auto border-y border-white/10 py-3">
+              {["All", "Reading", "Unread", "Completed", "Favorites"].map((filter) => (
+                <button key={filter} onClick={() => { setOnlyFavorites(false); setStatusFilter(filter); }} className={`h-10 shrink-0 rounded-full px-5 text-xs transition-colors ${!onlyFavorites && statusFilter === filter ? "bg-mono-50 text-mono-950" : "text-mono-400 hover:bg-white/[0.06] hover:text-white"}`}>{filter}</button>
+              ))}
+              <span className="ml-auto hidden items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-mono-500 sm:flex"><Icon name="grid" size={14} /> Visual index</span>
+            </div>
+
+            {filteredBooks.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex min-h-[430px] flex-col items-center justify-center rounded-[28px] border border-white/10 text-mono-500"><Icon name="search" size={34} /><h2 className="mt-5 text-xl text-white">Nothing on this shelf</h2><p className="mt-2 text-xs">Try another title, creator, or genre.</p></motion.div>
+            ) : (
+              <>
+                <motion.section layout className="mt-8 grid min-h-[520px] grid-cols-[minmax(270px,0.72fr)_minmax(360px,1.28fr)] overflow-hidden rounded-[30px] bg-mono-50 text-mono-950 max-[1050px]:grid-cols-[minmax(250px,.8fr)_1.2fr] max-[700px]:grid-cols-1" aria-label={`Featured book: ${selected.title}`}>
+                  <div className="relative min-h-[520px] overflow-hidden bg-mono-200 max-[700px]:min-h-[430px]">
+                    <motion.div key={`${selected.id}-backdrop`} initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: .24 }} className="absolute inset-0 scale-110 blur-2xl"><Image src={selected.cover} alt="" fill sizes="50vw" className="object-cover" loading="eager" /></motion.div>
+                    <motion.div key={selected.id} initial={reduceMotion ? false : { opacity: 0, y: 34, rotate: -2 }} animate={{ opacity: 1, y: 0, rotate: 0 }} transition={{ duration: .5, ease: [0.22, 1, 0.36, 1] }} className="absolute inset-x-[18%] top-[9%] bottom-[9%] overflow-hidden rounded-sm shadow-[0_25px_50px_rgb(0_0_0/0.32)]">
+                      <Image src={selected.cover} alt={`${selected.title} cover`} fill sizes="360px" className="object-cover" priority />
+                    </motion.div>
+                    <span className="absolute top-5 left-5 rounded-full bg-mono-950 px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-white">Now selected</span>
+                  </div>
+
+                  <div className="flex min-w-0 flex-col p-7 sm:p-10 lg:p-12">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-mono-500">{selected.series} · {selected.issue}</span>
+                      <button className="grid size-10 place-items-center rounded-full border border-mono-300 text-mono-700 hover:bg-mono-950 hover:text-white" aria-label="Add to favorites"><Icon name="heart" size={17} /></button>
+                    </div>
+                    <motion.div key={`${selected.id}-copy`} initial={reduceMotion ? false : { opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .42 }}>
+                      <h2 className="mt-12 max-w-[680px] text-[clamp(2.8rem,5.2vw,6.6rem)] leading-[0.84] font-semibold tracking-[-0.075em]">{selected.title}</h2>
+                      <p className="mt-6 max-w-xl text-sm leading-6 text-mono-600">{selected.description}</p>
+                    </motion.div>
+                    <div className="mt-auto pt-10">
+                      <div className="flex flex-wrap gap-x-8 gap-y-4 border-t border-mono-300 pt-5 text-[10px] uppercase tracking-[0.13em] text-mono-500"><span>{selected.author}</span><span>{selected.genre}</span><span>{selected.pages} pages</span><span>{selected.year}</span></div>
+                      <div className="mt-7 flex items-center justify-between gap-4">
+                        <button className="flex h-12 items-center gap-3 rounded-full bg-mono-950 px-6 text-xs font-bold text-white transition-transform hover:scale-[1.02]"><Icon name="book" size={17} /> {selected.progress > 0 ? "Continue reading" : "Start reading"}</button>
+                        <div className="flex gap-2">
+                          <button onClick={() => stepSelection(-1)} className="grid size-12 place-items-center rounded-full border border-mono-300 hover:bg-mono-200" aria-label="Previous book"><Icon name="arrowLeft" size={18} /></button>
+                          <button onClick={() => stepSelection(1)} className="grid size-12 place-items-center rounded-full border border-mono-300 hover:bg-mono-200" aria-label="Next book"><Icon name="arrowRight" size={18} /></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.section>
+
+                <section className="mt-20" aria-labelledby="collection-heading">
+                  <div className="flex items-end justify-between gap-6">
+                    <div><p className={eyebrowClass}>Visual index</p><h2 id="collection-heading" className="mt-2 text-4xl font-semibold tracking-[-0.055em] sm:text-5xl">The collection</h2></div>
+                    <p className="max-w-[280px] text-right text-xs leading-5 text-mono-500 max-[600px]:hidden">A quiet shelf for illustrated stories, strange worlds, and books worth returning to.</p>
+                  </div>
+
+                  <motion.div layout className="mt-9 grid grid-cols-4 gap-x-5 gap-y-12 max-[1250px]:grid-cols-3 max-[1040px]:grid-cols-2 max-[520px]:grid-cols-1">
+                    {filteredBooks.map((book, index) => (
                       <motion.button
                         layout
+                        initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: reduceMotion ? 0 : Math.min(index * .035, .25), duration: .42 }}
                         key={book.id}
-                        onClick={() => setSelectedId(book.id)}
-                        className={`grid h-[34px] w-full grid-cols-[42px_minmax(170px,1.4fr)_minmax(230px,2fr)_100px_70px_80px_110px_60px_100px] items-center border-b px-2 text-left text-[10px] text-muted-foreground transition-colors hover:bg-accent/50 ${isSelected ? "bg-accent text-accent-foreground" : index % 2 ? "bg-muted/20" : "bg-background"}`}
+                        onClick={() => { setSelectedId(book.id); document.getElementById("library-scroll")?.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }); }}
+                        className="group min-w-0 text-left"
                       >
-                        <span className="font-mono text-[9px]">{String(index + 1).padStart(2, "0")}</span>
-                        <span className="truncate font-medium text-foreground">{book.title}</span>
-                        <span className="truncate">{book.series.replaceAll(" ", "_")}_{book.issue.replaceAll(" ", "-")}.{book.format.toLowerCase()}</span>
-                        <span>{currentPage}</span><span>{book.pages}</span><span>{book.size}</span><span>{book.year}</span><span>{book.progress === 100 ? "yes" : "no"}</span>
-                        <span className="tracking-[0.2em] text-foreground">{"•".repeat(book.rating)}<span className="text-muted-foreground/30">{"•".repeat(5 - book.rating)}</span></span>
+                        <span className="relative block aspect-[4/5] overflow-hidden rounded-[18px] bg-mono-900">
+                          <Image src={book.cover} alt={`${book.title} cover`} fill sizes="(max-width: 520px) 100vw, (max-width: 1040px) 50vw, 25vw" className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]" />
+                          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-70" />
+                          <span className="absolute top-4 left-4 rounded-full bg-black/65 px-3 py-1.5 text-[9px] uppercase tracking-[0.13em] text-white backdrop-blur-md">{book.issue}</span>
+                          <span className="absolute right-4 bottom-4 grid size-10 translate-y-2 place-items-center rounded-full bg-white text-mono-950 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"><Icon name="arrowRight" size={18} /></span>
+                        </span>
+                        <span className="mt-4 flex items-start justify-between gap-3">
+                          <span className="min-w-0"><strong className="block truncate text-base font-semibold tracking-[-0.035em]">{book.title}</strong><span className="mt-1 block text-[10px] uppercase tracking-[0.12em] text-mono-500">{book.series} · {book.author}</span></span>
+                          <span className="pt-1 font-mono text-[10px] text-mono-600">{String(index + 1).padStart(2, "0")}</span>
+                        </span>
+                        <span className="mt-3 block h-px overflow-hidden bg-white/10"><motion.span initial={false} animate={{ width: `${book.progress}%` }} className="block h-full bg-mono-50" /></span>
                       </motion.button>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
+                    ))}
+                  </motion.div>
+                </section>
+              </>
+            )}
           </div>
-
-          <footer className="flex items-center justify-between border-t bg-card px-3 text-[9px] text-muted-foreground"><span className="flex items-center gap-1.5"><Icon name="sparkles" size={14} /> {filteredBooks.length} items · {filteredBooks.reduce((sum, book) => sum + book.pages, 0).toLocaleString()} pages</span><span className="flex items-center gap-2"><Icon name="list" size={14} /><span className="h-1 w-28 rounded-full bg-muted"><span className="block h-full w-2/5 rounded-full bg-primary" /></span><Icon name="grid" size={14} /></span></footer>
         </section>
       </div>
     </main>
