@@ -135,7 +135,10 @@ export default function Sidebar() {
                         variants={dropdownVariants}
                       >
                         <div className="ml-5.25 mt-2 border-l border-sidebar-border pb-4 pl-6 text-sm">
-                          <motion.div variants={dropdownItemVariants}>
+                          <motion.div
+                            variants={dropdownItemVariants}
+                            className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
+                          >
                             <Link
                               href="/library"
                               onClick={() => setLibraryFilter("all")}
@@ -144,7 +147,10 @@ export default function Sidebar() {
                               All
                             </Link>
                           </motion.div>
-                          <motion.div variants={dropdownItemVariants}>
+                          <motion.div
+                            variants={dropdownItemVariants}
+                            className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
+                          >
                             <Link
                               href="/library#favorites"
                               onClick={() => setLibraryFilter("favorites")}
@@ -153,7 +159,10 @@ export default function Sidebar() {
                               Favorites
                             </Link>
                           </motion.div>
-                          <motion.div variants={dropdownItemVariants}>
+                          <motion.div
+                            variants={dropdownItemVariants}
+                            className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
+                          >
                             <Link
                               href="/library#authors"
                               onClick={() => setLibraryFilter("authors")}
@@ -162,7 +171,10 @@ export default function Sidebar() {
                               Authors
                             </Link>
                           </motion.div>
-                          <motion.div variants={dropdownItemVariants}>
+                          <motion.div
+                            variants={dropdownItemVariants}
+                            className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
+                          >
                             <Link
                               href="/library#finished"
                               onClick={() => setLibraryFilter("finished")}
