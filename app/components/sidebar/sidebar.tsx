@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   Asterisk,
@@ -30,11 +30,25 @@ const navIcons: Record<SidebarLinkName, LucideIcon> = {
   Settings,
 };
 
+type LibraryFilter = "all" | "favorites" | "authors" | "finished";
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
+  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const reduceMotion = useReducedMotion();
   const spring = reduceMotion ? { duration: 0 } : sidebarSpring;
+
+  useEffect(() => {
+    const syncLibraryFilter = () => {
+      const hash = window.location.hash.slice(1);
+      setLibraryFilter(hash === "favorites" || hash === "authors" || hash === "finished" ? hash : "all");
+    };
+
+    syncLibraryFilter();
+    window.addEventListener("hashchange", syncLibraryFilter);
+    return () => window.removeEventListener("hashchange", syncLibraryFilter);
+  }, [pathname]);
 
   return (
     <aside className="sticky top-1 flex h-[calc(100dvh-0.5rem)] w-70 flex-col overflow-hidden rounded-lg border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xs">
@@ -120,24 +134,40 @@ export default function Sidebar() {
                         exit={reduceMotion ? undefined : "close"}
                         variants={dropdownVariants}
                       >
-                        <div className="ml-5.25 mt-2 border-l border-sidebar-border pb-4 pl-6">
+                        <div className="ml-5.25 mt-2 border-l border-sidebar-border pb-4 pl-6 text-sm">
                           <motion.div variants={dropdownItemVariants}>
-                            <Link href="/library" className="rounded-full bg-sidebar-accent px-3 py-1.5 text-xs text-sidebar-foreground">
+                            <Link
+                              href="/library"
+                              onClick={() => setLibraryFilter("all")}
+                              className={`rounded-full px-3 py-1 transition-colors ${libraryFilter === "all" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                            >
                               All
                             </Link>
                           </motion.div>
                           <motion.div variants={dropdownItemVariants}>
-                            <Link href="/library#favorites" className="mt-1 block px-3 py-1.5 text-xs text-sidebar-muted transition-colors hover:text-sidebar-foreground">
+                            <Link
+                              href="/library#favorites"
+                              onClick={() => setLibraryFilter("favorites")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "favorites" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                            >
                               Favorites
                             </Link>
                           </motion.div>
                           <motion.div variants={dropdownItemVariants}>
-                            <Link href="/library#authors" className="mt-1 block px-3 py-1.5 text-xs text-sidebar-muted transition-colors hover:text-sidebar-foreground">
+                            <Link
+                              href="/library#authors"
+                              onClick={() => setLibraryFilter("authors")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "authors" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                            >
                               Authors
                             </Link>
                           </motion.div>
                           <motion.div variants={dropdownItemVariants}>
-                            <Link href="/library#finished" className="mt-1 block px-3 py-1.5 text-xs text-sidebar-muted transition-colors hover:text-sidebar-foreground">
+                            <Link
+                              href="/library#finished"
+                              onClick={() => setLibraryFilter("finished")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "finished" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                            >
                               Finished
                             </Link>
                           </motion.div>

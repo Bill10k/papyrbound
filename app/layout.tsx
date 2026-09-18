@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import Breadcrumbs from "./components/breadcrumbs";
 import Sidebar from "./components/sidebar/sidebar";
 
 const haffer = localFont({
@@ -33,7 +32,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Sidebar />
         </div>
         <div className="min-w-0 p-1 pl-0">
-          <Breadcrumbs />
           {children}
         </div>
       </body>
