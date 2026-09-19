@@ -9,6 +9,7 @@ import { useState } from "react";
 
 export default function Home() {
   const [hover, setHover] = useState(false);
+  const [seeMoreHover, setSeeMoreHover] = useState(false);
 
   return (
     <main
@@ -20,14 +21,14 @@ export default function Home() {
         <button type="button" aria-label="Add a book" className="grid size-8 place-items-center transition-colors hover:bg-mono-700"><Plus aria-hidden="true" className="size-5" strokeWidth={1.5} /></button>
       </header> */}
 
-      <div className="grid gap-12 px-8 pb-8 pt-6 xl:grid-cols-[1.25fr_0.75fr] xl:gap-20">
+      <div className="grid gap-20 px-8 pb-8 pt-6 xl:grid-cols-[1.25fr_0.75fr] xl:gap-26">
         <section className="flex min-h-[calc(100dvh-4rem)] flex-col">
           <h3 className="text-3xl">Recent Reads</h3>
-          <div className="my-auto grid max-w-5xl grid-cols-4 grid-rows-2 gap-7 py-8">
+          <div className="my-auto grid max-w-5xl grid-cols-4 grid-rows-2 gap-5 py-8">
             {recentReads.map((recentRead, i) => {
               return (
                 <div
-                  className={`relative aspect-3/4 rounded-md shadow-xl overflow-hidden ${i === 0 ? "col-span-2 row-span-2" : ""}`}
+                  className={`relative aspect-3/4 rounded-md border-background border-5 shadow-xl overflow-hidden ${i === 0 ? "col-span-2 row-span-2" : ""}`}
                   key={i}
                 >
                   <Image
@@ -36,6 +37,7 @@ export default function Home() {
                     fill
                     objectFit="cover"
                     objectPosition="center"
+                    className="rounded-md"
                   />
                 </div>
               );
@@ -48,7 +50,14 @@ export default function Home() {
             href="/library"
             className="flex w-fit items-center  gap-2 text-2xl pb-12"
           >
-            Open Library
+            <span className="relative inline-block">
+              Open Library
+              <motion.span
+                animate={{ width: hover ? "100%" : "0%" }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="absolute -bottom-1 left-0 h-px bg-current"
+              />
+            </span>
             <motion.span
               animate={{ x: hover ? 3 : 0 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
@@ -59,7 +68,48 @@ export default function Home() {
           </Link>
         </section>
 
-        <section className="bg-blue-300 w-full"></section>
+        <section className="flex min-h-[calc(100dvh-4rem)] flex-col">
+          <h3 className="text-3xl">Favourite Books</h3>
+          <div className="my-auto grid max-w-md grid-cols-2 gap-5 py-8">
+            {favourites.map((favourite, i) => (
+              <div
+                className="relative aspect-3/4 overflow-hidden border-background border-5 rounded-md shadow-xl"
+                key={i}
+              >
+                <Image
+                  src={favourite.cover}
+                  alt={favourite.title}
+                  fill
+                  objectFit="cover"
+                  objectPosition="center"
+                  className="rounded-md"
+                />
+              </div>
+            ))}
+          </div>
+          <Link
+            onMouseEnter={() => setSeeMoreHover(true)}
+            onMouseLeave={() => setSeeMoreHover(false)}
+            href="/library#favorites"
+            className="mb-12 flex w-fit items-center gap-2 text-2xl"
+          >
+            <span className="relative inline-block">
+              See more
+              <motion.span
+                animate={{ width: seeMoreHover ? "100%" : "0%" }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="absolute -bottom-1 left-0 h-px bg-current"
+              />
+            </span>
+            <motion.span
+              animate={{ x: seeMoreHover ? 3 : 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="inline-flex"
+            >
+              <ChevronRight aria-hidden="true" className="mt-1.5" />
+            </motion.span>
+          </Link>
+        </section>
       </div>
     </main>
   );
