@@ -31,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="pl-1">
           <Sidebar />
         </div>
-        <div className="min-w-0 p-1 pl-0">
+        <div className="min-w-0 pl-0">
           {children}
         </div>
       </body>
