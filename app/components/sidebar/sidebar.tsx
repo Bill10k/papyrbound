@@ -30,7 +30,7 @@ const navIcons: Record<SidebarLinkName, LucideIcon> = {
   Settings,
 };
 
-type LibraryFilter = "all" | "favorites" | "authors" | "finished";
+type LibraryFilter = "all" | "favorites" | "not started" | "reading" | "completed";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -42,7 +42,7 @@ export default function Sidebar() {
   useEffect(() => {
     const syncLibraryFilter = () => {
       const hash = window.location.hash.slice(1);
-      setLibraryFilter(hash === "favorites" || hash === "authors" || hash === "finished" ? hash : "all");
+      setLibraryFilter(hash === "favorites" || hash === "not started" || hash === "reading" || hash === "completed" ? hash : "all");
     };
 
     syncLibraryFilter();
@@ -165,10 +165,22 @@ export default function Sidebar() {
                           >
                             <Link
                               href="/library#authors"
-                              onClick={() => setLibraryFilter("authors")}
-                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "authors" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                              onClick={() => setLibraryFilter("not started")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "not started" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
                             >
-                              Authors
+                              Not Started
+                            </Link>
+                          </motion.div>
+                            <motion.div
+                            variants={dropdownItemVariants}
+                            className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
+                          >
+                            <Link
+                              href="/library#reading"
+                              onClick={() => setLibraryFilter("reading")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "reading" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                            >
+                              Reading
                             </Link>
                           </motion.div>
                           <motion.div
@@ -176,11 +188,11 @@ export default function Sidebar() {
                             className="relative before:absolute before:-left-6 before:top-1/2 before:w-6 before:border-t before:border-sidebar-border before:content-['']"
                           >
                             <Link
-                              href="/library#finished"
-                              onClick={() => setLibraryFilter("finished")}
-                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "finished" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
+                              href="/library#completed"
+                              onClick={() => setLibraryFilter("completed")}
+                              className={`mt-1 inline-block rounded-full px-3 py-1 transition-colors ${libraryFilter === "completed" ? "bg-sidebar-accent text-sidebar-foreground" : "text-sidebar-muted hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"}`}
                             >
-                              Finished
+                              Completed
                             </Link>
                           </motion.div>
                         </div>
