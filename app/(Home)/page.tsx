@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, ChevronRight, Menu, Plus } from "lucide-react";
 import { favourites, recentReads } from "./data";
 import Link from "next/link";
 import { useState } from "react";
+import BookCover from "@/app/components/book-cover";
 
 export default function Home() {
   const [hover, setHover] = useState(false);
@@ -27,19 +27,15 @@ export default function Home() {
           <div className="my-auto grid max-w-5xl grid-cols-4 grid-rows-2 gap-5 py-8">
             {recentReads.map((recentRead, i) => {
               return (
-                <div
-                  className={`relative aspect-3/4 rounded-md border-background border-5 shadow-xl overflow-hidden ${i === 0 ? "col-span-2 row-span-2" : ""}`}
-                  key={i}
-                >
-                  <Image
-                    src={recentRead.cover}
-                    alt={recentRead.title}
-                    fill
-                    objectFit="cover"
-                    objectPosition="center"
-                    className="rounded-md"
-                  />
-                </div>
+                <BookCover
+                  key={recentRead.title}
+                  src={recentRead.cover}
+                  title={recentRead.title}
+                  sizes="(max-width: 1280px) 25vw, 20vw"
+                  variant="home"
+                  preload={i === 0}
+                  className={i === 0 ? "col-span-2 row-span-2" : ""}
+                />
               );
             })}
           </div>
@@ -70,21 +66,15 @@ export default function Home() {
 
         <section className="flex min-h-[calc(100dvh-4rem)] flex-col">
           <h3 className="text-3xl">Favourite Books</h3>
-          <div className="my-auto grid max-w-md grid-cols-2 gap-5 py-8">
+          <div className="my-auto grid max-w-85 grid-cols-2 gap-5 py-8">
             {favourites.map((favourite, i) => (
-              <div
-                className="relative aspect-3/4 overflow-hidden border-background border-5 rounded-md shadow-xl"
-                key={i}
-              >
-                <Image
-                  src={favourite.cover}
-                  alt={favourite.title}
-                  fill
-                  objectFit="cover"
-                  objectPosition="center"
-                  className="rounded-md"
-                />
-              </div>
+              <BookCover
+                key={favourite.title}
+                src={favourite.cover}
+                title={favourite.title}
+                sizes="(max-width: 1280px) 20vw, 16vw"
+                variant="home"
+              />
             ))}
           </div>
           <Link
