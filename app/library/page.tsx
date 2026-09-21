@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { recentReads, favourites } from "../(Home)/data";
 import BookCover from "@/app/components/book-cover";
-import { Ellipsis } from "lucide-react";
+import { Check, Ellipsis, Eye, Heart, RotateCcw, Trash2 } from "lucide-react";
+import {
+  dropdownItemVariants,
+  dropdownVariants,
+} from "@/app/components/sidebar/animations";
 
 const shelfBooks = [
   {
@@ -193,7 +197,7 @@ export default function LibraryPage() {
                           current === book.title ? null : book.title,
                         )
                       }
-                      className="grid size-7 place-items-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      className="grid size-7 place-items-center rounded-full text-sidebar-muted transition-colors hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
                     >
                       <Ellipsis aria-hidden="true" size={20} />
                     </button>
@@ -207,24 +211,45 @@ export default function LibraryPage() {
                           animate={{ y: 0, opacity: 1, scale: 1 }}
                           exit={reduceMotion ? { opacity: 0 } : { y: 8, opacity: 0, scale: 0.96 }}
                           transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
-                          className="absolute right-0 z-20 mt-2 w-52 origin-top-right rounded-xl border border-sidebar-border bg-background p-2 text-sm text-sidebar-foreground shadow-[0_18px_44px_rgba(42,37,26,0.16)]"
+                          className={`absolute z-20 mt-2 w-52 rounded-xl border border-sidebar-border bg-background p-1 text-sm text-sidebar-foreground shadow-[0_18px_44px_rgba(42,37,26,0.16)] ${
+                            index % 2 === 0
+                              ? "left-0 right-auto origin-top-left"
+                              : "left-auto right-0 origin-top-right"
+                          } ${
+                            index % 3 === 0
+                              ? "sm:left-0 sm:right-auto sm:origin-top-left"
+                              : "sm:left-auto sm:right-0 sm:origin-top-right"
+                          } ${
+                            index % 5 === 0
+                              ? "xl:left-0 xl:right-auto xl:origin-top-left"
+                              : "xl:left-auto xl:right-0 xl:origin-top-right"
+                          }`}
                         >
-                          <div className="space-y-1">
+                          <motion.div
+                            className="space-y-1"
+                            initial={reduceMotion ? false : "close"}
+                            animate="open"
+                            exit={reduceMotion ? undefined : "close"}
+                            variants={dropdownVariants}
+                          >
                             <motion.button
                               type="button"
                               role="menuitem"
+                              variants={dropdownItemVariants}
                               whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                               onClick={() => {
                                 setSelectedBook(book.title);
                                 setActiveMenu(null);
                               }}
-                              className="w-full rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
+                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
                             >
-                              View details
+                              <Eye aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                              <span>View details</span>
                             </motion.button>
                             <motion.button
                               type="button"
                               role="menuitem"
+                              variants={dropdownItemVariants}
                               whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                               onClick={() => {
                                 setProgressByTitle((current) => ({
@@ -233,20 +258,46 @@ export default function LibraryPage() {
                                 }));
                                 setActiveMenu(null);
                               }}
-                              className="w-full rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
+                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
                             >
-                              {progress === 100 ? "Mark as unread" : "Mark as finished"}
+                              <Heart aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                              <span>Add to favourites</span>
                             </motion.button>
                             <motion.button
                               type="button"
                               role="menuitem"
+                              variants={dropdownItemVariants}
                               whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                              onClick={() => removeBook(book.title)}
-                              className="w-full rounded-md px-3 py-2.5 text-left text-destructive transition-colors hover:bg-destructive/10"
+                              onClick={() => {
+                                setProgressByTitle((current) => ({
+                                  ...current,
+                                  [book.title]: progress === 100 ? 0 : 100,
+                                }));
+                                setActiveMenu(null);
+                              }}
+                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
                             >
-                              Delete
+                              {progress === 100 ? (
+                                <RotateCcw aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                              ) : (
+                                <Check aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                              )}
+                              <span>{progress === 100 ? "Mark as unread" : "Mark as finished"}</span>
                             </motion.button>
-                          </div>
+                            <motion.div variants={dropdownItemVariants}>
+                              <hr className="my-1 border-sidebar-border" />
+                              <motion.button
+                                type="button"
+                                role="menuitem"
+                                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                                onClick={() => removeBook(book.title)}
+                                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-destructive transition-colors hover:bg-destructive/10"
+                              >
+                                <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                                <span>Delete</span>
+                              </motion.button>
+                            </motion.div>
+                          </motion.div>
                         </motion.div>
                       )}
                     </AnimatePresence>
