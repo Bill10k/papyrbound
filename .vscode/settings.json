@@ -1,7 +1,24 @@
 {
     "files.autoSave": "afterDelay",
-    "editor.fontSize": 16,
+    "editor.fontSize": 15,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
-    "editor.fontFamily": "'Dank mono', monospace",
-    "editor.cursorBlinking": "smooth"
+    "editor.fontFamily": "'Jetbrains Mono', monospace",
+    "editor.fontLigatures": true,
+    "editor.cursorBlinking": "smooth",
+    "workbench.colorTheme": "Rosé Pine",
+"editor.inlayHints.enabled": "off",
+    "editor.tokenColorCustomizations": {
+    "textMateRules": [
+        {
+            "scope": [
+                "comment",
+                "keyword",
+                "storage.type"
+            ],
+            "settings": {
+                "fontStyle": "italic"
+            }
+        }
+    ]
+}
 }
