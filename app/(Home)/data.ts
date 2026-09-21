@@ -1,15 +1,15 @@
 export const recentReads = [
-  { title: "Ashfall", author: "Mina Osei", cover: "/covers/ashfall-01.webp", featured: true },
-  { title: "The Odyssey", author: "Homer", cover: "/covers/glass-garden-01.webp" },
-  { title: "A New Garden", author: "R. Ito", cover: "/covers/red-kites-01.webp" },
-  { title: "Night Signal", author: "Eli Navarro", cover: "/covers/night-signal-01.webp" },
-  { title: "Bedtime Stories", author: "Uncle Amon", cover: "/covers/room-193-01.webp" },
+  { title: "Ashfall", author: "Mina Osei", cover: "/covers/ashfall-01.webp", featured: true, progress: 29 },
+  { title: "The Odyssey", author: "Homer", cover: "/covers/glass-garden-01.webp", progress: 65 },
+  { title: "A New Garden", author: "R. Ito", cover: "/covers/red-kites-01.webp", progress: 100 },
+  { title: "Night Signal", author: "Eli Navarro", cover: "/covers/night-signal-01.webp", progress: 0 },
+  { title: "Bedtime Stories", author: "Uncle Amon", cover: "/covers/room-193-01.webp", progress: 100 },
 ];
 
 export const favourites = [
-  { title: "Glass Garden", author: "R. Ito", cover: "/covers/glass-garden-01.webp" },
-  { title: "Tidebound", author: "Mina Osei", cover: "/covers/tidebound-01.webp" },
-  { title: "Red Kites", author: "Eli Navarro", cover: "/covers/red-kites-01.webp" },
+  { title: "Glass Garden", author: "R. Ito", cover: "/covers/glass-garden-01.webp", progress: 0 },
+  { title: "Tidebound", author: "Mina Osei", cover: "/covers/tidebound-01.webp", progress: 67 },
+  { title: "Red Kites", author: "Eli Navarro", cover: "/covers/red-kites-01.webp", progress: 100 },
 ];
 
 

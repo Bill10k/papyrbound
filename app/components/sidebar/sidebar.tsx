@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import {
   Asterisk,
-  // EllipsisVertical,
+  StickyNotes,
   House,
   LibraryBig,
   Settings,
@@ -26,7 +26,8 @@ import {
 const navIcons: Record<SidebarLinkName, LucideIcon> = {
   Home: House,
   Library: LibraryBig,
-  Collection: BookCopy,
+  Collections: BookCopy,
+  Annotations: StickyNotes,
   Settings,
 };
 
