@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 import { recentReads, favourites } from "../(Home)/data";
 import BookCover from "@/app/components/book-cover";
-import { Check, Ellipsis, Eye, Heart, RotateCcw, Trash2 } from "lucide-react";
-import {
-  dropdownItemVariants,
-  dropdownVariants,
-} from "@/app/components/sidebar/animations";
+import ContextMenu from "@/app/components/context-menu";
+import { Check, Eye, Heart, RotateCcw, Trash2 } from "lucide-react";
 
 const shelfBooks = [
   {
@@ -68,8 +65,6 @@ export default function LibraryPage() {
   const [selectedBook, setSelectedBook] = useState(details.title);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [hiddenBookTitles, setHiddenBookTitles] = useState<string[]>([]);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
   const [progressByTitle, setProgressByTitle] = useState<Record<string, number>>(
     () => Object.fromEntries(shelfBooks.map((book) => [book.title, book.progress])),
   );
@@ -84,33 +79,12 @@ export default function LibraryPage() {
 
   const removeBook = (title: string) => {
     setHiddenBookTitles((current) => [...current, title]);
-    setActiveMenu(null);
 
     if (title === selectedBook) {
       const nextBook = visibleBooks.find((book) => book.title !== title);
       if (nextBook) setSelectedBook(nextBook.title);
     }
   };
-
-  useEffect(() => {
-    if (!activeMenu) return;
-
-    const closeOnOutsidePress = (event: PointerEvent) => {
-      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) {
-        setActiveMenu(null);
-      }
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setActiveMenu(null);
-    };
-
-    document.addEventListener("pointerdown", closeOnOutsidePress);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeOnOutsidePress);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [activeMenu]);
 
   return (
     <main
@@ -183,125 +157,62 @@ export default function LibraryPage() {
                     )}
                   </div>
 
-                  <div
-                    ref={activeMenu === book.title ? menuRef : undefined}
-                    className="relative"
-                  >
-                    <button
-                      type="button"
-                      aria-label={`Actions for ${book.title}`}
-                      aria-expanded={activeMenu === book.title}
-                      aria-controls={`book-actions-${index}`}
-                      onClick={() =>
-                        setActiveMenu((current) =>
-                          current === book.title ? null : book.title,
-                        )
-                      }
-                      className="grid size-7 place-items-center rounded-full text-sidebar-muted transition-colors hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
-                    >
-                      <Ellipsis aria-hidden="true" size={20} />
-                    </button>
-
-                    <AnimatePresence initial={false}>
-                      {activeMenu === book.title && (
-                        <motion.div
-                          id={`book-actions-${index}`}
-                          role="menu"
-                          initial={reduceMotion ? false : { y: 12, opacity: 0, scale: 0.92 }}
-                          animate={{ y: 0, opacity: 1, scale: 1 }}
-                          exit={reduceMotion ? { opacity: 0 } : { y: 8, opacity: 0, scale: 0.96 }}
-                          transition={{ duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] }}
-                          className={`absolute z-20 mt-2 w-52 rounded-xl border border-sidebar-border bg-background p-1 text-sm text-sidebar-foreground shadow-[0_18px_44px_rgba(42,37,26,0.16)] ${
-                            index % 2 === 0
-                              ? "left-0 right-auto origin-top-left"
-                              : "left-auto right-0 origin-top-right"
-                          } ${
-                            index % 3 === 0
-                              ? "sm:left-0 sm:right-auto sm:origin-top-left"
-                              : "sm:left-auto sm:right-0 sm:origin-top-right"
-                          } ${
-                            index % 5 === 0
-                              ? "xl:left-0 xl:right-auto xl:origin-top-left"
-                              : "xl:left-auto xl:right-0 xl:origin-top-right"
-                          }`}
-                        >
-                          <motion.div
-                            className="space-y-1"
-                            initial={reduceMotion ? false : "close"}
-                            animate="open"
-                            exit={reduceMotion ? undefined : "close"}
-                            variants={dropdownVariants}
-                          >
-                            <motion.button
-                              type="button"
-                              role="menuitem"
-                              variants={dropdownItemVariants}
-                              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                              onClick={() => {
-                                setSelectedBook(book.title);
-                                setActiveMenu(null);
-                              }}
-                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
-                            >
-                              <Eye aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                              <span>View details</span>
-                            </motion.button>
-                            <motion.button
-                              type="button"
-                              role="menuitem"
-                              variants={dropdownItemVariants}
-                              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                              onClick={() => {
-                                setProgressByTitle((current) => ({
-                                  ...current,
-                                  [book.title]: progress === 100 ? 0 : 100,
-                                }));
-                                setActiveMenu(null);
-                              }}
-                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
-                            >
-                              <Heart aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                              <span>Add to favourites</span>
-                            </motion.button>
-                            <motion.button
-                              type="button"
-                              role="menuitem"
-                              variants={dropdownItemVariants}
-                              whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                              onClick={() => {
-                                setProgressByTitle((current) => ({
-                                  ...current,
-                                  [book.title]: progress === 100 ? 0 : 100,
-                                }));
-                                setActiveMenu(null);
-                              }}
-                              className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-sidebar-accent"
-                            >
-                              {progress === 100 ? (
-                                <RotateCcw aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                              ) : (
-                                <Check aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                              )}
-                              <span>{progress === 100 ? "Mark as unread" : "Mark as finished"}</span>
-                            </motion.button>
-                            <motion.div variants={dropdownItemVariants}>
-                              <hr className="my-1 border-sidebar-border" />
-                              <motion.button
-                                type="button"
-                                role="menuitem"
-                                whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                                onClick={() => removeBook(book.title)}
-                                className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-destructive transition-colors hover:bg-destructive/10"
-                              >
-                                <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                                <span>Delete</span>
-                              </motion.button>
-                            </motion.div>
-                          </motion.div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  <ContextMenu
+                    ariaLabel={`Actions for ${book.title}`}
+                    menuId={`book-actions-${index}`}
+                    open={activeMenu === book.title}
+                    onOpenChange={(open) => setActiveMenu(open ? book.title : null)}
+                    alignmentClassName={`${
+                      index % 2 === 0
+                        ? "left-0 right-auto"
+                        : "left-auto right-0"
+                    } ${
+                      index % 3 === 0
+                        ? "sm:left-0 sm:right-auto"
+                        : "sm:left-auto sm:right-0"
+                    } ${
+                      index % 5 === 0
+                        ? "xl:left-0 xl:right-auto"
+                        : "xl:left-auto xl:right-0"
+                    }`}
+                    items={[
+                      {
+                        label: "View details",
+                        icon: <Eye aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
+                        onSelect: () => setSelectedBook(book.title),
+                      },
+                      {
+                        label: "Add to favourites",
+                        icon: <Heart aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
+                        onSelect: () =>
+                          setProgressByTitle((current) => ({
+                            ...current,
+                            [book.title]: progress === 100 ? 0 : 100,
+                          })),
+                      },
+                      {
+                        label: progress === 100 ? "Mark as unread" : "Mark as finished",
+                        icon:
+                          progress === 100 ? (
+                            <RotateCcw aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                          ) : (
+                            <Check aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
+                          ),
+                        onSelect: () =>
+                          setProgressByTitle((current) => ({
+                            ...current,
+                            [book.title]: progress === 100 ? 0 : 100,
+                          })),
+                      },
+                      {
+                        label: "Delete",
+                        icon: <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />,
+                        onSelect: () => removeBook(book.title),
+                        destructive: true,
+                        dividerBefore: true,
+                      },
+                    ]}
+                  />
                 </div>
               </motion.article>
               );
