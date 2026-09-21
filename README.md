@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Papyrbound
 
-## Getting Started
+Papyrbound is a desktop reading library for EPUBs and illustrated books. It pairs a focused, tactile library experience with a lightweight desktop shell.
 
-First, run the development server:
+## Stack
+
+- [Next.js](https://nextjs.org/) and React for the interface
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [Tauri](https://tauri.app/) for the desktop application
+
+## Requirements
+
+- Node.js 20 or later
+- Rust (the stable toolchain)
+- The platform prerequisites required by [Tauri](https://v2.tauri.app/start/prerequisites/)
+
+## Getting started
+
+Install the JavaScript dependencies:
+
+```bash
+npm install
+```
+
+Run the interface in a browser:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then visit [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run Papyrbound as a desktop app:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run tauri dev
+```
 
-## Learn More
+The Tauri command starts the Next.js development server when one is not already running. If port `3000` is occupied, either use the existing server or stop its process before starting Tauri again.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the Next.js development server. |
+| `npm run build` | Create a production Next.js build. |
+| `npm run start` | Serve the production Next.js build. |
+| `npm run tauri dev` | Run the desktop application in development. |
+| `npm run tauri build` | Create a packaged desktop application. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project structure
 
-## Deploy on Vercel
+```text
+app/        Next.js routes, components, and styles
+src-tauri/  Tauri desktop application and Rust configuration
+public/     Static assets
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Keep changes focused, verify the relevant run or build command before opening a pull request, and avoid committing generated build output.
