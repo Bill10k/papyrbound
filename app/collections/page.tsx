@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Book,
@@ -25,10 +24,9 @@ import { initialCollections, type Collection } from "./data";
 type Dialog = "create" | "rename" | "delete" | null;
 
 export default function CollectionsPage() {
-  const router = useRouter();
   const [collections, setCollections] = useState(initialCollections);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [selectedCollection, setSelectedCollection] = useState("reading-now");
+  const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [collectionName, setCollectionName] = useState("");
@@ -37,6 +35,40 @@ export default function CollectionsPage() {
   const activeCollection = collections.find(
     (collection) => collection.id === activeCollectionId,
   );
+  const selectedCollectionDetails = collections.find(
+    (collection) => collection.id === selectedCollection,
+  );
+
+  const selectCollection = (collectionId: string) => {
+    setSelectedCollection(collectionId);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("collection", collectionId);
+    window.history.pushState({}, "", url);
+  };
+
+  const closeCollection = () => {
+    setSelectedCollection(null);
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("collection");
+    window.history.pushState({}, "", url);
+  };
+
+  useEffect(() => {
+    const syncSelectedCollection = () => {
+      const collectionId = new URLSearchParams(window.location.search).get("collection");
+      setSelectedCollection(
+        collectionId && collections.some((collection) => collection.id === collectionId)
+          ? collectionId
+          : null,
+      );
+    };
+
+    syncSelectedCollection();
+    window.addEventListener("popstate", syncSelectedCollection);
+    return () => window.removeEventListener("popstate", syncSelectedCollection);
+  }, [collections]);
 
   const openCreateDialog = () => {
     setCollectionName("");
@@ -143,7 +175,7 @@ export default function CollectionsPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => router.push(`/collections/${collection.id}`)}
+                      onClick={() => selectCollection(collection.id)}
                       className="w-full text-left"
                       aria-pressed={selectedCollection === collection.id}
                     >
@@ -187,7 +219,7 @@ export default function CollectionsPage() {
                           {
                             label: "Open collection",
                             icon: <BookCopy aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
-                            onSelect: () => router.push(`/collections/${collection.id}`),
+                            onSelect: () => selectCollection(collection.id),
                           },
                           {
                             label: "Rename collection",
@@ -213,6 +245,65 @@ export default function CollectionsPage() {
       </section>
 
       <AnimatePresence>
+        {selectedCollectionDetails && (
+          <motion.aside
+            key={selectedCollectionDetails.id}
+            aria-label={`${selectedCollectionDetails.name} details`}
+            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 12 }}
+            transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed right-1 top-1 z-30 flex h-[calc(100dvh-0.5rem)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-y-auto rounded-lg border border-sidebar-border bg-sidebar px-6 pb-8 pt-7 text-sidebar-foreground shadow-[0_18px_44px_rgba(42,37,26,0.16)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-sidebar-muted">Collection</p>
+                <h2 className="mt-2 text-xl leading-[1.1] tracking-[-0.035em]">{selectedCollectionDetails.name}</h2>
+              </div>
+              <motion.button
+                type="button"
+                aria-label="Close collection"
+                whileTap={reduceMotion ? undefined : { scale: 0.95 }}
+                onClick={closeCollection}
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-accent text-mono-700 transition-colors hover:bg-mono-200"
+              >
+                <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              </motion.button>
+            </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-sidebar-muted">{selectedCollectionDetails.description}</p>
+
+            <div className="mt-6 flex items-center justify-between border-y border-sidebar-border py-4 text-sm">
+              <span className="text-sidebar-muted">Books</span>
+              <span className="font-mono text-[11px] text-sidebar-foreground">{selectedCollectionDetails.books.length}</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              {selectedCollectionDetails.books.map((book) => (
+                <BookCover
+                  key={book.title}
+                  src={book.cover}
+                  title={book.title}
+                  sizes="96px"
+                  className="h-36"
+                  zoomOnHover={false}
+                />
+              ))}
+            </div>
+
+            <dl className="mt-7 text-sm leading-relaxed">
+              <div className="border-t border-sidebar-border py-4">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">Last updated</dt>
+                <dd className="mt-1">{selectedCollectionDetails.updated.replace("Updated ", "")}</dd>
+              </div>
+              <div className="border-t border-sidebar-border py-4">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">Description</dt>
+                <dd className="mt-1 text-sidebar-muted">{selectedCollectionDetails.description}</dd>
+              </div>
+            </dl>
+          </motion.aside>
+        )}
+
         {dialog && (
           <>
             <motion.button
