@@ -9,6 +9,7 @@ type BookCoverProps = {
   variant?: BookCoverVariant;
   className?: string;
   preload?: boolean;
+  zoomOnHover?: boolean;
 };
 
 const variantClasses: Record<BookCoverVariant, string> = {
@@ -27,6 +28,7 @@ export default function BookCover({
   variant = "library",
   className = "",
   preload = false,
+  zoomOnHover = true,
 }: BookCoverProps) {
   return (
     <div
@@ -38,7 +40,11 @@ export default function BookCover({
         fill
         sizes={sizes}
         preload={preload}
-        className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+        className={`object-cover ${
+          zoomOnHover
+            ? "transition-transform duration-500 group-hover:scale-[1.025]"
+            : ""
+        }`}
       />
     </div>
   );

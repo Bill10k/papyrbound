@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Book,
@@ -19,49 +20,12 @@ import {
 import BookCover from "@/app/components/book-cover";
 import ContextMenu from "@/app/components/context-menu";
 import { favourites, recentReads } from "../(Home)/data";
-
-type Collection = {
-  id: string;
-  name: string;
-  description: string;
-  updated: string;
-  books: { title: string; cover: string }[];
-};
-
-const initialCollections: Collection[] = [
-  {
-    id: "reading-now",
-    name: "Reading now",
-    description: "A small stack for this season.",
-    updated: "Updated today",
-    books: [recentReads[0], recentReads[1], favourites[1]],
-  },
-  {
-    id: "quiet-worlds",
-    name: "Quiet worlds",
-    description: "Places to disappear into after dark.",
-    updated: "Updated yesterday",
-    books: [favourites[0], recentReads[3], recentReads[4]],
-  },
-  {
-    id: "to-revisit",
-    name: "To revisit",
-    description: "Books worth another slow reading.",
-    updated: "Updated 4 days ago",
-    books: [recentReads[2], favourites[2], recentReads[1]],
-  },
-  {
-    id: "short-forms",
-    name: "Short forms",
-    description: "Essays, stories, and one-sitting reads.",
-    updated: "Updated last week",
-    books: [recentReads[4], favourites[1], recentReads[3]],
-  },
-];
+import { initialCollections, type Collection } from "./data";
 
 type Dialog = "create" | "rename" | "delete" | null;
 
 export default function CollectionsPage() {
+  const router = useRouter();
   const [collections, setCollections] = useState(initialCollections);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState("reading-now");
@@ -151,13 +115,6 @@ export default function CollectionsPage() {
       </header>
 
       <section aria-labelledby="collections-heading">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 id="collections-heading" className="text-sm text-mono-700">Your collections</h2>
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-mono-600">
-            {collections.length} saved
-          </span>
-        </div>
-
         <motion.div
           className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
           initial="hidden"
@@ -186,7 +143,7 @@ export default function CollectionsPage() {
                   >
                     <button
                       type="button"
-                      onClick={() => setSelectedCollection(collection.id)}
+                      onClick={() => router.push(`/collections/${collection.id}`)}
                       className="w-full text-left"
                       aria-pressed={selectedCollection === collection.id}
                     >
@@ -198,6 +155,7 @@ export default function CollectionsPage() {
                             title={book.title}
                             sizes="(max-width: 640px) 28vw, (max-width: 1280px) 14vw, 120px"
                             className="h-full"
+                            zoomOnHover={false}
                           />
                         ))}
                       </div>
@@ -229,7 +187,7 @@ export default function CollectionsPage() {
                           {
                             label: "Open collection",
                             icon: <BookCopy aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
-                            onSelect: () => setSelectedCollection(collection.id),
+                            onSelect: () => router.push(`/collections/${collection.id}`),
                           },
                           {
                             label: "Rename collection",

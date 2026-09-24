@@ -1,6 +1,7 @@
 {
     "files.autoSave": "afterDelay",
-    "editor.fontSize": 15,
+    "editor.fontSize": 16,
+    "editor.lineHeight": 2.25,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.fontFamily": "'Jetbrains Mono', monospace",
     "editor.fontLigatures": true,
