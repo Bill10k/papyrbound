@@ -27,13 +27,84 @@ type Dialog = "create" | "rename" | "delete" | null;
 
 export default function CollectionsPage() {
   const { books, openBook } = useApp();
-  const [collections, setCollections] = useState(initialCollections);
+  const [customCollections, setCustomCollections] = useState<Collection[]>([]);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   const [collectionName, setCollectionName] = useState("");
   const reduceMotion = useReducedMotion();
+
+  // Dynamically generate collections from real books
+  const dynamicCollections: Collection[] = books.length > 0 ? [
+    {
+      id: "all-volumes",
+      name: "All Volumes",
+      description: "Complete catalog of imported books and comics.",
+      updated: "Updated just now",
+      books: books.map((b) => ({
+        title: b.title,
+        cover: b.cover_image || "/covers/ashfall-01.webp",
+        author: b.author || "Unknown Author",
+        progress: b.progress_percent,
+      })),
+    },
+    {
+      id: "reading-now",
+      name: "Currently Reading",
+      description: "Books in active progress.",
+      updated: "Updated recently",
+      books: (books.filter((b) => b.progress_percent > 0 && b.progress_percent < 99).length > 0
+        ? books.filter((b) => b.progress_percent > 0 && b.progress_percent < 99)
+        : books
+      ).map((b) => ({
+        title: b.title,
+        cover: b.cover_image || "/covers/ashfall-01.webp",
+        author: b.author || "Unknown Author",
+        progress: b.progress_percent,
+      })),
+    },
+    {
+      id: "comics-manga",
+      name: "Comics & Manga",
+      description: "CBZ and ZIP graphic novels and Manga spreads.",
+      updated: "Updated recently",
+      books: (books.filter((b) => 
+        b.file_path.toLowerCase().endsWith(".cbz") || 
+        b.file_path.toLowerCase().endsWith(".zip") ||
+        b.author === "Comic / Manga"
+      ).length > 0 
+        ? books.filter((b) => 
+            b.file_path.toLowerCase().endsWith(".cbz") || 
+            b.file_path.toLowerCase().endsWith(".zip") ||
+            b.author === "Comic / Manga"
+          )
+        : books
+      ).map((b) => ({
+        title: b.title,
+        cover: b.cover_image || "/covers/ashfall-01.webp",
+        author: b.author || "Unknown Author",
+        progress: b.progress_percent,
+      })),
+    },
+    {
+      id: "completed",
+      name: "Completed Books",
+      description: "Finished titles and archives.",
+      updated: "Updated recently",
+      books: (books.filter((b) => b.progress_percent >= 99).length > 0
+        ? books.filter((b) => b.progress_percent >= 99)
+        : books
+      ).map((b) => ({
+        title: b.title,
+        cover: b.cover_image || "/covers/ashfall-01.webp",
+        author: b.author || "Unknown Author",
+        progress: b.progress_percent,
+      })),
+    },
+  ] : initialCollections;
+
+  const collections: Collection[] = [...dynamicCollections, ...customCollections];
 
   const activeCollection = collections.find(
     (collection) => collection.id === activeCollectionId,
@@ -94,20 +165,25 @@ export default function CollectionsPage() {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
-      setCollections((current) => [
+      setCustomCollections((current) => [
         {
           id: `${id}-${Date.now()}`,
           name,
           description: "A new place for the books you want to keep together.",
           updated: "Created just now",
-          books: [recentReads[0], favourites[0], recentReads[2]],
+          books: books.slice(0, 3).map((b) => ({
+            title: b.title,
+            cover: b.cover_image || "/covers/ashfall-01.webp",
+            author: b.author || "Unknown Author",
+            progress: b.progress_percent,
+          })),
         },
         ...current,
       ]);
     }
 
     if (dialog === "rename" && activeCollectionId) {
-      setCollections((current) =>
+      setCustomCollections((current) =>
         current.map((collection) =>
           collection.id === activeCollectionId
             ? { ...collection, name, updated: "Updated just now" }
@@ -122,11 +198,11 @@ export default function CollectionsPage() {
   const deleteCollection = () => {
     if (!activeCollectionId) return;
 
-    setCollections((current) =>
+    setCustomCollections((current) =>
       current.filter((collection) => collection.id !== activeCollectionId),
     );
     if (selectedCollection === activeCollectionId) {
-      setSelectedCollection(collections.find((collection) => collection.id !== activeCollectionId)?.id ?? "");
+      setSelectedCollection(null);
     }
     setDialog(null);
   };
@@ -182,8 +258,8 @@ export default function CollectionsPage() {
                       className="w-full text-left"
                       aria-pressed={selectedCollection === collection.id}
                     >
-                      <div className="grid h-44 grid-cols-3 gap-2 overflow-hidden rounded-lg p-2">
-                        {collection.books.map((book) => (
+                      <div className="grid h-44 grid-cols-3 gap-2 overflow-hidden rounded-lg p-2 bg-mono-150/40">
+                        {collection.books.slice(0, 3).map((book) => (
                           <BookCover
                             key={book.title}
                             src={book.cover}
