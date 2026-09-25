@@ -73,3 +73,63 @@ export interface Bookmark {
   scroll_position: number;
   created_at: string;
 }
+
+export interface BookSettings {
+  book_id: string;
+  layout_mode: "single" | "dual";
+  reading_direction: "ltr" | "rtl";
+  comic_fit_mode: "contain" | "fit-width" | "fit-height";
+  font_size: number;
+  theme: "paper" | "sepia" | "dark";
+  font_family: "serif" | "sans" | "mono";
+  line_height: "compact" | "relaxed" | "spacious";
+  text_align: "left" | "justify";
+  column_width: "narrow" | "normal" | "wide";
+  updated_at: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  book_id: string;
+  start_time: string;
+  end_time: string;
+  duration_seconds: number;
+  chapters_read: number;
+}
+
+export interface HourlyActivity {
+  hour: number;
+  total_seconds: number;
+}
+
+export interface DailyActivity {
+  date: string;
+  total_seconds: number;
+  session_count: number;
+}
+
+export interface BookProgressStat {
+  book_id: string;
+  title: string;
+  author: string | null;
+  cover_image: string | null;
+  total_chapters: number;
+  current_chapter: number;
+  progress_percent: number;
+  total_reading_seconds: number;
+  is_completed: boolean;
+  last_read_at: string | null;
+}
+
+export interface ReadingInsights {
+  total_reading_seconds: number;
+  total_sessions: number;
+  completed_books_count: number;
+  in_progress_books_count: number;
+  current_streak_days: number;
+  today_reading_seconds: number;
+  hourly_distribution: HourlyActivity[];
+  daily_history: DailyActivity[];
+  book_stats: BookProgressStat[];
+}
+

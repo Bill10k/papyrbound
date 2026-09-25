@@ -84,6 +84,7 @@ dependencies = [
  "chrono",
  "epub",
  "log",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",

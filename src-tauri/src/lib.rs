@@ -52,8 +52,15 @@ pub fn run() {
             delete_highlight,
             toggle_bookmark,
             get_book_bookmarks,
-            delete_bookmark
+            delete_bookmark,
+            get_all_highlights,
+            get_all_bookmarks,
+            save_book_settings,
+            get_book_settings,
+            record_reading_session,
+            get_reading_insights
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+

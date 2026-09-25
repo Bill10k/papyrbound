@@ -12,11 +12,15 @@ import {
   toggleBookmark,
   getBookBookmarks,
   deleteBookmark,
+  getBookSettings,
+  saveBookSettings,
+  recordReadingSession,
 } from "../lib/api";
 import type { BookDetails, Bookmark, ChapterContent, Highlight, TocItem } from "../types/epub";
 
 interface ReaderProps {
   book: BookDetails;
+  initialChapterIndex?: number;
   onClose: () => void;
 }
 
@@ -28,6 +32,8 @@ type TextAlign = "left" | "justify";
 type ColumnWidth = "narrow" | "normal" | "wide";
 type HighlightColor = "yellow" | "green" | "blue" | "pink" | "purple";
 type DrawerTab = "contents" | "notes" | "bookmarks";
+type ComicReadingDirection = "ltr" | "rtl";
+type ComicFitMode = "contain" | "fit-width" | "fit-height";
 
 interface ReaderSettings {
   fontSize: number;
@@ -37,6 +43,8 @@ interface ReaderSettings {
   lineHeight: LineHeight;
   textAlign: TextAlign;
   columnWidth: ColumnWidth;
+  comicReadingDirection: ComicReadingDirection;
+  comicFitMode: ComicFitMode;
 }
 
 const DEFAULT_SETTINGS: ReaderSettings = {
@@ -47,6 +55,8 @@ const DEFAULT_SETTINGS: ReaderSettings = {
   lineHeight: "relaxed",
   textAlign: "justify",
   columnWidth: "normal",
+  comicReadingDirection: "ltr",
+  comicFitMode: "contain",
 };
 
 const HIGHLIGHT_COLORS: { id: HighlightColor; name: string; bgClass: string; dotClass: string }[] = [
@@ -57,10 +67,11 @@ const HIGHLIGHT_COLORS: { id: HighlightColor; name: string; bgClass: string; dot
   { id: "purple", name: "Purple", bgClass: "bg-purple-300/40 dark:bg-purple-400/30", dotClass: "bg-purple-400" },
 ];
 
-export default function Reader({ book, onClose }: ReaderProps) {
-  const [currentChapter, setCurrentChapter] = useState(0);
+export default function Reader({ book, initialChapterIndex, onClose }: ReaderProps) {
+  const [currentChapter, setCurrentChapter] = useState(initialChapterIndex ?? 0);
   const [chapterContent, setChapterContent] = useState<ChapterContent | null>(null);
   const [processedHtml, setProcessedHtml] = useState<string>("");
+  const [dualPairedHtml, setDualPairedHtml] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Drawer states
@@ -92,18 +103,81 @@ export default function Reader({ book, onClose }: ReaderProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef<number | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const settingsSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sessionStartRef = useRef<number>(Date.now());
+  const chaptersVisitedRef = useRef<Set<number>>(new Set([initialChapterIndex ?? 0]));
+  const pageCacheRef = useRef<Map<number, { title: string | null; html: string; total_chapters: number }>>(
+    new Map()
+  );
 
-  // 1. Load user settings from localStorage on mount
+  // Track chapters visited during this session
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("papyrbound_reader_settings");
-      if (saved) {
-        setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+    chaptersVisitedRef.current.add(currentChapter);
+  }, [currentChapter]);
+
+  // Record reading session duration on component unmount
+  useEffect(() => {
+    sessionStartRef.current = Date.now();
+    const startTimeIso = new Date(sessionStartRef.current).toISOString();
+
+    return () => {
+      const elapsedSeconds = Math.round((Date.now() - sessionStartRef.current) / 1000);
+      // Only record sessions that lasted at least 3 seconds to filter out instant click opens
+      if (elapsedSeconds >= 3) {
+        const endTimeIso = new Date().toISOString();
+        recordReadingSession({
+          id: crypto.randomUUID(),
+          book_id: book.id,
+          start_time: startTimeIso,
+          end_time: endTimeIso,
+          duration_seconds: elapsedSeconds,
+          chapters_read: chaptersVisitedRef.current.size,
+        }).catch((err) => {
+          console.warn("Failed to record reading session on exit:", err);
+        });
       }
-    } catch {
-      // ignore
-    }
-  }, []);
+    };
+  }, [book.id]);
+
+  // 1. Load book-specific settings from SQLite (falling back to localStorage / defaults)
+  useEffect(() => {
+    let isMounted = true;
+    getBookSettings(book.id)
+      .then((saved) => {
+        if (!isMounted) return;
+        if (saved) {
+          setSettings((prev) => ({
+            ...prev,
+            fontSize: saved.font_size ?? prev.fontSize,
+            theme: (saved.theme as ReadingTheme) ?? prev.theme,
+            layoutMode: (saved.layout_mode as LayoutMode) ?? prev.layoutMode,
+            fontFamily: (saved.font_family as FontFamily) ?? prev.fontFamily,
+            lineHeight: (saved.line_height as LineHeight) ?? prev.lineHeight,
+            textAlign: (saved.text_align as TextAlign) ?? prev.textAlign,
+            columnWidth: (saved.column_width as ColumnWidth) ?? prev.columnWidth,
+            comicReadingDirection: (saved.reading_direction as ComicReadingDirection) ?? prev.comicReadingDirection,
+            comicFitMode: (saved.comic_fit_mode as ComicFitMode) ?? prev.comicFitMode,
+          }));
+        } else {
+          // Fallback to global localStorage defaults
+          try {
+            const globalSaved = localStorage.getItem("papyrbound_reader_settings");
+            if (globalSaved) {
+              setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(globalSaved) });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Failed to load per-book settings from DB, using fallback:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [book.id]);
 
   const updateSetting = <K extends keyof ReaderSettings>(key: K, value: ReaderSettings[K]) => {
     setSettings((prev) => {
@@ -113,6 +187,27 @@ export default function Reader({ book, onClose }: ReaderProps) {
       } catch {
         // ignore
       }
+
+      // Debounce saving per-book settings to SQLite
+      if (settingsSaveTimeoutRef.current) {
+        clearTimeout(settingsSaveTimeoutRef.current);
+      }
+      settingsSaveTimeoutRef.current = setTimeout(() => {
+        saveBookSettings({
+          book_id: book.id,
+          font_size: updated.fontSize,
+          theme: updated.theme,
+          layout_mode: updated.layoutMode,
+          font_family: updated.fontFamily,
+          line_height: updated.lineHeight,
+          text_align: updated.textAlign,
+          column_width: updated.columnWidth,
+          reading_direction: updated.comicReadingDirection,
+          comic_fit_mode: updated.comicFitMode,
+          updated_at: new Date().toISOString(),
+        }).catch((err) => console.warn("Failed to persist per-book settings:", err));
+      }, 400);
+
       return updated;
     });
   };
@@ -141,8 +236,9 @@ export default function Reader({ book, onClose }: ReaderProps) {
     loadBookmarks();
   }, [loadHighlights, loadBookmarks]);
 
-  // 3. Restore reading progress from SQLite on mount
+  // 3. Restore reading progress from SQLite on mount (if initialChapterIndex is not explicitly set)
   useEffect(() => {
+    if (initialChapterIndex !== undefined) return;
     let isMounted = true;
     getReadingProgress(book.id)
       .then((progress) => {
@@ -158,51 +254,117 @@ export default function Reader({ book, onClose }: ReaderProps) {
     return () => {
       isMounted = false;
     };
-  }, [book.id, book.total_chapters]);
+  }, [book.id, book.total_chapters, initialChapterIndex]);
 
-  // 4. Load chapter content when currentChapter changes & inject highlights
+  // 4. In-Memory Chapter Fetcher & Resource Processor with Pre-Caching
+  const fetchAndProcessChapter = useCallback(
+    async (chapterIdx: number): Promise<{ title: string | null; html: string; total_chapters: number }> => {
+      const cached = pageCacheRef.current.get(chapterIdx);
+      if (cached) return cached;
+
+      const content = await getChapterContent(book.id, chapterIdx);
+
+      // Process images inside HTML: replace relative src with base64 data URLs
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content.html_content, "text/html");
+      const images = doc.querySelectorAll("img");
+
+      for (const img of Array.from(images)) {
+        const rawSrc = img.getAttribute("src");
+        if (rawSrc && !rawSrc.startsWith("data:") && !rawSrc.startsWith("http")) {
+          try {
+            const res = await getBookResource(book.id, rawSrc);
+            img.setAttribute("src", `data:${res.mime_type};base64,${res.data_base64}`);
+          } catch (err) {
+            console.warn(`Failed to resolve resource ${rawSrc}:`, err);
+          }
+        }
+      }
+
+      let bodyContent = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
+
+      // Apply highlights for current chapter (if EPUB)
+      const chapterHighlights = highlights.filter((h) => h.chapter_index === chapterIdx);
+      for (const hl of chapterHighlights) {
+        if (hl.selected_text && hl.selected_text.length > 2) {
+          const colorDef = HIGHLIGHT_COLORS.find((c) => c.id === hl.color) || HIGHLIGHT_COLORS[0];
+          const regex = new RegExp(`(${escapeRegex(hl.selected_text)})`, "gi");
+          bodyContent = bodyContent.replace(
+            regex,
+            `<mark class="${colorDef.bgClass} text-inherit rounded px-0.5 transition-colors cursor-pointer" data-highlight-id="${hl.id}" title="${hl.note || ''}">$1</mark>`
+          );
+        }
+      }
+
+      const result = {
+        title: content.title,
+        html: bodyContent,
+        total_chapters: content.total_chapters,
+      };
+
+      pageCacheRef.current.set(chapterIdx, result);
+      return result;
+    },
+    [book.id, highlights]
+  );
+
+  // Background Pre-caching Buffer Loop
+  const triggerPreCache = useCallback(
+    (chapterIdx: number) => {
+      const targets = [
+        chapterIdx + 1,
+        chapterIdx + 2,
+        chapterIdx + 3,
+        chapterIdx + 4,
+        chapterIdx - 1,
+        chapterIdx - 2,
+      ].filter((idx) => idx >= 0 && idx < book.total_chapters && !pageCacheRef.current.has(idx));
+
+      targets.forEach((targetIdx, offset) => {
+        setTimeout(() => {
+          fetchAndProcessChapter(targetIdx).catch(() => {});
+        }, offset * 60 + 50);
+      });
+    },
+    [book.total_chapters, fetchAndProcessChapter]
+  );
+
+  // Load chapter and pair spreads
   const loadChapter = useCallback(
     async (chapterIdx: number) => {
-      setIsLoading(true);
+      const isDualComic = isComic && settings.layoutMode === "dual";
+      const cached = pageCacheRef.current.get(chapterIdx);
+
+      if (!cached) {
+        setIsLoading(true);
+      }
       setSelectionPopup(null);
       setNoteInputOpen(false);
+
       try {
-        const content = await getChapterContent(book.id, chapterIdx);
-        setChapterContent(content);
+        const primary = await fetchAndProcessChapter(chapterIdx);
+        setChapterContent({
+          book_id: book.id,
+          chapter_index: chapterIdx,
+          title: primary.title,
+          html_content: primary.html,
+          total_chapters: primary.total_chapters,
+        });
+        setProcessedHtml(primary.html);
 
-        // Process images inside HTML: replace relative src with base64 data URLs
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(content.html_content, "text/html");
-        const images = doc.querySelectorAll("img");
-
-        for (const img of Array.from(images)) {
-          const rawSrc = img.getAttribute("src");
-          if (rawSrc && !rawSrc.startsWith("data:") && !rawSrc.startsWith("http")) {
-            try {
-              const res = await getBookResource(book.id, rawSrc);
-              img.setAttribute("src", `data:${res.mime_type};base64,${res.data_base64}`);
-            } catch (err) {
-              console.warn(`Failed to resolve resource ${rawSrc}:`, err);
-            }
+        if (isDualComic) {
+          const pairedIdx = chapterIdx + 1 < book.total_chapters ? chapterIdx + 1 : null;
+          if (pairedIdx !== null) {
+            const paired = await fetchAndProcessChapter(pairedIdx);
+            setDualPairedHtml(paired.html);
+          } else {
+            setDualPairedHtml(null);
           }
+        } else {
+          setDualPairedHtml(null);
         }
 
-        let bodyContent = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
-
-        // Apply highlights for current chapter
-        const chapterHighlights = highlights.filter((h) => h.chapter_index === chapterIdx);
-        for (const hl of chapterHighlights) {
-          if (hl.selected_text && hl.selected_text.length > 2) {
-            const colorDef = HIGHLIGHT_COLORS.find((c) => c.id === hl.color) || HIGHLIGHT_COLORS[0];
-            const regex = new RegExp(`(${escapeRegex(hl.selected_text)})`, "gi");
-            bodyContent = bodyContent.replace(
-              regex,
-              `<mark class="${colorDef.bgClass} text-inherit rounded px-0.5 transition-colors cursor-pointer" data-highlight-id="${hl.id}" title="${hl.note || ''}">$1</mark>`
-            );
-          }
-        }
-
-        setProcessedHtml(bodyContent);
+        setIsLoading(false);
 
         // Schedule restoring precise scroll position or reset to top
         requestAnimationFrame(() => {
@@ -215,14 +377,16 @@ export default function Reader({ book, onClose }: ReaderProps) {
             }
           }
         });
+
+        // Trigger silent background pre-caching
+        triggerPreCache(chapterIdx);
       } catch (err) {
         console.error("Failed to load chapter:", err);
-        setProcessedHtml(`<div class="p-8 text-center text-destructive">Failed to load chapter: ${err}</div>`);
-      } finally {
+        setProcessedHtml(`<div class="p-8 text-center text-destructive">Failed to load content: ${err}</div>`);
         setIsLoading(false);
       }
     },
-    [book.id, highlights]
+    [book.id, book.total_chapters, isComic, settings.layoutMode, fetchAndProcessChapter, triggerPreCache]
   );
 
   useEffect(() => {
@@ -333,19 +497,48 @@ export default function Reader({ book, onClose }: ReaderProps) {
     }
   };
 
-  // 8. Keyboard navigation
+  // Navigation step calculations
+  const navigationStep = isComic && settings.layoutMode === "dual" ? 2 : 1;
+
+  const goToNextPage = useCallback(() => {
+    if (currentChapter < book.total_chapters - 1) {
+      pendingScrollRef.current = null;
+      setCurrentChapter((prev) => Math.min(book.total_chapters - 1, prev + navigationStep));
+    }
+  }, [currentChapter, book.total_chapters, navigationStep]);
+
+  const goToPrevPage = useCallback(() => {
+    if (currentChapter > 0) {
+      pendingScrollRef.current = null;
+      setCurrentChapter((prev) => Math.max(0, prev - navigationStep));
+    }
+  }, [currentChapter, navigationStep]);
+
+  // 8. Keyboard navigation with Manga RTL mode support
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "ArrowRight" || e.key === "PageDown") {
-        if (currentChapter < book.total_chapters - 1) {
-          pendingScrollRef.current = null;
-          setCurrentChapter((prev) => prev + 1);
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      const isMangaRTL = isComic && settings.comicReadingDirection === "rtl";
+
+      if (e.key === "ArrowRight") {
+        if (isMangaRTL) {
+          goToPrevPage();
+        } else {
+          goToNextPage();
         }
-      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        if (currentChapter > 0) {
-          pendingScrollRef.current = null;
-          setCurrentChapter((prev) => prev - 1);
+      } else if (e.key === "ArrowLeft") {
+        if (isMangaRTL) {
+          goToNextPage();
+        } else {
+          goToPrevPage();
         }
+      } else if (e.key === "PageDown" || e.key === " ") {
+        goToNextPage();
+      } else if (e.key === "PageUp") {
+        goToPrevPage();
       } else if (e.key === "Escape") {
         if (drawerOpen) setDrawerOpen(false);
         else if (settingsOpen) setSettingsOpen(false);
@@ -356,7 +549,16 @@ export default function Reader({ book, onClose }: ReaderProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentChapter, book.total_chapters, drawerOpen, settingsOpen, selectionPopup, onClose]);
+  }, [
+    isComic,
+    settings.comicReadingDirection,
+    goToNextPage,
+    goToPrevPage,
+    drawerOpen,
+    settingsOpen,
+    selectionPopup,
+    onClose,
+  ]);
 
   // Theme Styles
   const themeClasses: Record<ReadingTheme, string> = {
@@ -398,6 +600,12 @@ export default function Reader({ book, onClose }: ReaderProps) {
     narrow: "max-w-xl",
     normal: "max-w-2xl",
     wide: "max-w-4xl",
+  };
+
+  const comicFitClasses: Record<ComicFitMode, string> = {
+    contain: "[&_img]:max-h-[82vh] [&_img]:max-w-full [&_img]:object-contain [&_img]:mx-auto [&_img]:rounded-lg [&_img]:shadow-lg [&_img]:shadow-black/25",
+    "fit-width": "[&_img]:w-full [&_img]:max-h-none [&_img]:object-contain [&_img]:mx-auto [&_img]:rounded-lg [&_img]:shadow-lg [&_img]:shadow-black/25",
+    "fit-height": "[&_img]:h-[86vh] [&_img]:max-h-[86vh] [&_img]:w-auto [&_img]:max-w-none [&_img]:object-contain [&_img]:mx-auto [&_img]:rounded-lg [&_img]:shadow-lg [&_img]:shadow-black/25",
   };
 
   return (
@@ -600,12 +808,46 @@ export default function Reader({ book, onClose }: ReaderProps) {
                 ? "bg-black/15 dark:bg-white/20 font-bold"
                 : "hover:bg-black/5 dark:hover:bg-white/10 opacity-70"
             }`}
-            title={settings.layoutMode === "dual" ? "Switch to Single Column" : "Switch to Dual-Page Spread"}
+            title={
+              isComic
+                ? settings.layoutMode === "dual"
+                  ? "Switch to Single Page"
+                  : "Switch to Dual-Page Spread"
+                : settings.layoutMode === "dual"
+                ? "Switch to Single Column"
+                : "Switch to Dual-Page Spread"
+            }
           >
             <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </button>
+
+          {/* Manga Reading Direction Override Toggle for Comics */}
+          {isComic && (
+            <button
+              onClick={() =>
+                updateSetting(
+                  "comicReadingDirection",
+                  settings.comicReadingDirection === "ltr" ? "rtl" : "ltr"
+                )
+              }
+              className={`h-8 px-2 rounded-lg text-xs font-mono transition-all cursor-pointer flex items-center gap-1 border ${
+                settings.comicReadingDirection === "rtl"
+                  ? "bg-amber-400/20 text-amber-800 dark:text-amber-300 font-bold border-amber-400/40"
+                  : "border-current/15 hover:bg-black/5 dark:hover:bg-white/10 opacity-75"
+              }`}
+              title={
+                settings.comicReadingDirection === "rtl"
+                  ? "Manga Mode: Right-to-Left (Click for Western LTR)"
+                  : "Western Mode: Left-to-Right (Click for Manga RTL)"
+              }
+            >
+              <span className="text-[10px] font-bold">
+                {settings.comicReadingDirection === "rtl" ? "RTL (Manga)" : "LTR (Western)"}
+              </span>
+            </button>
+          )}
 
           {/* Quick Theme Switcher */}
           <div className="hidden sm:flex items-center rounded-lg border border-current/10 bg-black/5 dark:bg-white/5 p-0.5">
@@ -855,7 +1097,7 @@ export default function Reader({ book, onClose }: ReaderProps) {
           <aside className={`absolute inset-y-0 right-0 w-80 max-w-full z-30 border-l flex flex-col animate-in slide-in-from-right duration-200 p-5 space-y-6 overflow-y-auto ${drawerThemeClasses[settings.theme]}`}>
             <div className="flex items-center justify-between border-b border-current/10 pb-3">
               <span className="font-semibold text-xs uppercase tracking-wider font-mono">
-                Reader Appearance
+                {isComic ? "Comic View Options" : "Reader Appearance"}
               </span>
               <button
                 onClick={() => setSettingsOpen(false)}
@@ -865,150 +1107,236 @@ export default function Reader({ book, onClose }: ReaderProps) {
               </button>
             </div>
 
-            {/* Font Size Adjuster */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium">Font Size</span>
-                <span className="font-mono text-[11px] opacity-75">{settings.fontSize}px</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => updateSetting("fontSize", Math.max(14, settings.fontSize - 2))}
-                  className="flex-1 py-1.5 rounded-lg border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-                >
-                  A-
-                </button>
-                <input
-                  type="range"
-                  min="14"
-                  max="32"
-                  step="1"
-                  value={settings.fontSize}
-                  onChange={(e) => updateSetting("fontSize", Number(e.target.value))}
-                  className="flex-1 accent-current cursor-pointer"
-                />
-                <button
-                  onClick={() => updateSetting("fontSize", Math.min(32, settings.fontSize + 2))}
-                  className="flex-1 py-1.5 rounded-lg border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
-                >
-                  A+
-                </button>
-              </div>
-            </div>
+            {isComic ? (
+              <>
+                {/* Comic Page Spread Mode */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Page Spread Layout</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateSetting("layoutMode", "single")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.layoutMode === "single"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Single Page
+                    </button>
+                    <button
+                      onClick={() => updateSetting("layoutMode", "dual")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.layoutMode === "dual"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Dual Spread
+                    </button>
+                  </div>
+                </div>
 
-            {/* Font Family */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium block">Typeface</span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["serif", "sans", "mono"] as FontFamily[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => updateSetting("fontFamily", f)}
-                    className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
-                      settings.fontFamily === f
-                        ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
-                        : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Comic Reading Direction */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Reading Direction</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateSetting("comicReadingDirection", "ltr")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.comicReadingDirection === "ltr"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      LTR (Western)
+                    </button>
+                    <button
+                      onClick={() => updateSetting("comicReadingDirection", "rtl")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.comicReadingDirection === "rtl"
+                          ? "bg-amber-400/25 text-amber-800 dark:text-amber-300 font-bold border border-amber-400/40"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      RTL (Manga)
+                    </button>
+                  </div>
+                </div>
 
-            {/* Line Height Spacing */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium block">Line Spacing</span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["compact", "relaxed", "spacious"] as LineHeight[]).map((lh) => (
-                  <button
-                    key={lh}
-                    onClick={() => updateSetting("lineHeight", lh)}
-                    className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
-                      settings.lineHeight === lh
-                        ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
-                        : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                    }`}
-                  >
-                    {lh}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Comic Sizing / Fit Mode */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Image Fit & Sizing</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { id: "contain", label: "Fit Page" },
+                        { id: "fit-width", label: "Fit Width" },
+                        { id: "fit-height", label: "Fit Height" },
+                      ] as const
+                    ).map((mode) => (
+                      <button
+                        key={mode.id}
+                        onClick={() => updateSetting("comicFitMode", mode.id)}
+                        className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
+                          settings.comicFitMode === mode.id
+                            ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
+                            : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                        }`}
+                      >
+                        {mode.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Font Size Adjuster */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">Font Size</span>
+                    <span className="font-mono text-[11px] opacity-75">{settings.fontSize}px</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => updateSetting("fontSize", Math.max(14, settings.fontSize - 2))}
+                      className="flex-1 py-1.5 rounded-lg border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+                    >
+                      A-
+                    </button>
+                    <input
+                      type="range"
+                      min="14"
+                      max="32"
+                      step="1"
+                      value={settings.fontSize}
+                      onChange={(e) => updateSetting("fontSize", Number(e.target.value))}
+                      className="flex-1 accent-current cursor-pointer"
+                    />
+                    <button
+                      onClick={() => updateSetting("fontSize", Math.min(32, settings.fontSize + 2))}
+                      className="flex-1 py-1.5 rounded-lg border border-current/15 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+                    >
+                      A+
+                    </button>
+                  </div>
+                </div>
 
-            {/* Text Alignment */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium block">Alignment</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => updateSetting("textAlign", "left")}
-                  className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
-                    settings.textAlign === "left"
-                      ? "bg-black/15 dark:bg-white/20 font-bold"
-                      : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                  }`}
-                >
-                  Left Align
-                </button>
-                <button
-                  onClick={() => updateSetting("textAlign", "justify")}
-                  className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
-                    settings.textAlign === "justify"
-                      ? "bg-black/15 dark:bg-white/20 font-bold"
-                      : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                  }`}
-                >
-                  Justified
-                </button>
-              </div>
-            </div>
+                {/* Font Family */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Typeface</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["serif", "sans", "mono"] as FontFamily[]).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => updateSetting("fontFamily", f)}
+                        className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
+                          settings.fontFamily === f
+                            ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
+                            : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Reading Column Width */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium block">Reading Width</span>
-              <div className="grid grid-cols-3 gap-1.5">
-                {(["narrow", "normal", "wide"] as ColumnWidth[]).map((w) => (
-                  <button
-                    key={w}
-                    onClick={() => updateSetting("columnWidth", w)}
-                    className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
-                      settings.columnWidth === w
-                        ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
-                        : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                    }`}
-                  >
-                    {w}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Line Height Spacing */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Line Spacing</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["compact", "relaxed", "spacious"] as LineHeight[]).map((lh) => (
+                      <button
+                        key={lh}
+                        onClick={() => updateSetting("lineHeight", lh)}
+                        className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
+                          settings.lineHeight === lh
+                            ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
+                            : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                        }`}
+                      >
+                        {lh}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Layout Spread Mode */}
-            <div className="space-y-2">
-              <span className="text-xs font-medium block">Page Spread</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => updateSetting("layoutMode", "single")}
-                  className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
-                    settings.layoutMode === "single"
-                      ? "bg-black/15 dark:bg-white/20 font-bold"
-                      : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                  }`}
-                >
-                  Single Column
-                </button>
-                <button
-                  onClick={() => updateSetting("layoutMode", "dual")}
-                  className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
-                    settings.layoutMode === "dual"
-                      ? "bg-black/15 dark:bg-white/20 font-bold"
-                      : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
-                  }`}
-                >
-                  Dual Spread
-                </button>
-              </div>
-            </div>
+                {/* Text Alignment */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Alignment</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateSetting("textAlign", "left")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.textAlign === "left"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Left Align
+                    </button>
+                    <button
+                      onClick={() => updateSetting("textAlign", "justify")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.textAlign === "justify"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Justified
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reading Column Width */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Reading Width</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["narrow", "normal", "wide"] as ColumnWidth[]).map((w) => (
+                      <button
+                        key={w}
+                        onClick={() => updateSetting("columnWidth", w)}
+                        className={`py-2 rounded-lg text-xs capitalize transition-all cursor-pointer ${
+                          settings.columnWidth === w
+                            ? "bg-black/15 dark:bg-white/20 font-bold shadow-xs"
+                            : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                        }`}
+                      >
+                        {w}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Layout Spread Mode */}
+                <div className="space-y-2">
+                  <span className="text-xs font-medium block">Page Spread</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateSetting("layoutMode", "single")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.layoutMode === "single"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Single Column
+                    </button>
+                    <button
+                      onClick={() => updateSetting("layoutMode", "dual")}
+                      className={`py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        settings.layoutMode === "dual"
+                          ? "bg-black/15 dark:bg-white/20 font-bold"
+                          : "border border-current/10 hover:bg-black/5 dark:hover:bg-white/5 opacity-80"
+                      }`}
+                    >
+                      Dual Spread
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </aside>
         )}
 
@@ -1034,7 +1362,9 @@ export default function Reader({ book, onClose }: ReaderProps) {
               style={{ fontSize: `${settings.fontSize}px` }}
               className={`w-full transition-all duration-150 ${
                 isComic
-                  ? "max-w-4xl"
+                  ? settings.layoutMode === "dual"
+                    ? "max-w-7xl"
+                    : "max-w-4xl"
                   : settings.layoutMode === "dual"
                   ? "max-w-6xl md:columns-2 gap-14 md:[column-rule:1px_solid_currentColor] md:[column-rule-color:oklch(from_currentColor_l_c_h_/_15%)]"
                   : columnWidthClasses[settings.columnWidth]
@@ -1048,44 +1378,99 @@ export default function Reader({ book, onClose }: ReaderProps) {
                 </div>
               )}
 
-              {/* Render Inlined EPUB XHTML Content or Comic Page Container */}
-              <div
-                className={`epub-reader-content space-y-5 ${
-                  isComic
-                    ? "flex justify-center items-center py-2"
-                    : "[&>p]:mb-5 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:text-xl [&>h2]:font-semibold [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-medium [&>img]:max-w-full [&>img]:h-auto [&>img]:rounded-lg [&>img]:mx-auto [&>img]:my-6 [&>blockquote]:border-l-2 [&>blockquote]:border-current/30 [&>blockquote]:pl-4 [&>blockquote]:italic [&_table]:w-full [&_table]:border-collapse [&_th]:border-b [&_td]:border-b [&_td]:py-2"
-                }`}
-                dangerouslySetInnerHTML={{ __html: processedHtml }}
-              />
+              {/* Render Comic Spread or EPUB XHTML Content */}
+              {isComic ? (
+                settings.layoutMode === "dual" ? (
+                  <div
+                    className={`comic-spread-container flex flex-row items-center justify-center w-full gap-3 sm:gap-6 select-none ${
+                      comicFitClasses[settings.comicFitMode]
+                    }`}
+                  >
+                    {settings.comicReadingDirection === "rtl" ? (
+                      // Manga RTL Mode: Left is next page (N+1), Right is current page (N)
+                      <>
+                        {dualPairedHtml ? (
+                          <div
+                            className="flex-1 max-w-[50%] flex justify-end"
+                            dangerouslySetInnerHTML={{ __html: dualPairedHtml }}
+                          />
+                        ) : (
+                          <div className="flex-1 max-w-[50%] opacity-25 border border-dashed border-current/25 rounded-lg min-h-[45vh] flex items-center justify-center text-xs font-mono">
+                            [End of Comic]
+                          </div>
+                        )}
+                        <div
+                          className="flex-1 max-w-[50%] flex justify-start"
+                          dangerouslySetInnerHTML={{ __html: processedHtml }}
+                        />
+                      </>
+                    ) : (
+                      // Western LTR Mode: Left is current page (N), Right is next page (N+1)
+                      <>
+                        <div
+                          className="flex-1 max-w-[50%] flex justify-end"
+                          dangerouslySetInnerHTML={{ __html: processedHtml }}
+                        />
+                        {dualPairedHtml ? (
+                          <div
+                            className="flex-1 max-w-[50%] flex justify-start"
+                            dangerouslySetInnerHTML={{ __html: dualPairedHtml }}
+                          />
+                        ) : (
+                          <div className="flex-1 max-w-[50%] opacity-25 border border-dashed border-current/25 rounded-lg min-h-[45vh] flex items-center justify-center text-xs font-mono">
+                            [End of Comic]
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`comic-single-container flex justify-center items-center py-2 w-full select-none ${
+                      comicFitClasses[settings.comicFitMode]
+                    }`}
+                    dangerouslySetInnerHTML={{ __html: processedHtml }}
+                  />
+                )
+              ) : (
+                <div
+                  className="epub-reader-content space-y-5 [&>p]:mb-5 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:text-xl [&>h2]:font-semibold [&>h2]:mb-3 [&>h3]:text-lg [&>h3]:font-medium [&>img]:max-w-full [&>img]:h-auto [&>img]:rounded-lg [&>img]:mx-auto [&>img]:my-6 [&>blockquote]:border-l-2 [&>blockquote]:border-current/30 [&>blockquote]:pl-4 [&>blockquote]:italic [&_table]:w-full [&_table]:border-collapse [&_th]:border-b [&_td]:border-b [&_td]:py-2"
+                  dangerouslySetInnerHTML={{ __html: processedHtml }}
+                />
+              )}
 
-              {/* End of Chapter Navigation Banner */}
+              {/* End of Chapter / Spread Navigation Banner */}
               <div className="pt-10 pb-8 border-t border-current/10 flex items-center justify-between gap-4 font-sans [break-before:avoid] [column-span:all]">
                 <button
                   disabled={currentChapter === 0}
-                  onClick={() => {
-                    pendingScrollRef.current = null;
-                    setCurrentChapter((prev) => Math.max(0, prev - 1));
-                  }}
+                  onClick={goToPrevPage}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-current/15 text-xs font-medium transition-all hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 cursor-pointer"
                 >
-                  {isComic ? "← Previous Page" : "← Previous Chapter"}
+                  {isComic
+                    ? settings.layoutMode === "dual"
+                      ? "← Prev Spread"
+                      : "← Prev Page"
+                    : "← Previous Chapter"}
                 </button>
 
                 <span className="font-mono text-[11px] opacity-60">
                   {isComic
-                    ? `Page ${currentChapter + 1} of ${book.total_chapters}`
+                    ? settings.layoutMode === "dual" && currentChapter + 1 < book.total_chapters
+                      ? `Pages ${currentChapter + 1}-${currentChapter + 2} of ${book.total_chapters}`
+                      : `Page ${currentChapter + 1} of ${book.total_chapters}`
                     : `Chapter ${currentChapter + 1} of ${book.total_chapters}`}
                 </span>
 
                 <button
                   disabled={currentChapter >= book.total_chapters - 1}
-                  onClick={() => {
-                    pendingScrollRef.current = null;
-                    setCurrentChapter((prev) => Math.min(book.total_chapters - 1, prev + 1));
-                  }}
+                  onClick={goToNextPage}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg border border-current/15 text-xs font-medium transition-all hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 cursor-pointer"
                 >
-                  {isComic ? "Next Page →" : "Next Chapter →"}
+                  {isComic
+                    ? settings.layoutMode === "dual"
+                      ? "Next Spread →"
+                      : "Next Page →"
+                    : "Next Chapter →"}
                 </button>
               </div>
             </article>

@@ -2,7 +2,8 @@ use crate::comic_engine::ComicEngine;
 use crate::db::Database;
 use crate::epub_engine::EpubEngine;
 use crate::models::{
-    BookDetails, BookSummary, Bookmark, ChapterContent, Highlight, ReadingProgress, ResourceData,
+    BookDetails, BookSettings, BookSummary, Bookmark, ChapterContent, Highlight, ReadingInsights,
+    ReadingProgress, ReadingSession, ResourceData,
 };
 use chrono::Utc;
 use tauri::State;
@@ -180,6 +181,18 @@ pub async fn get_book_bookmarks(
 }
 
 #[tauri::command]
+pub async fn get_all_highlights(db: State<'_, Database>) -> Result<Vec<Highlight>, String> {
+    db.get_all_highlights()
+        .map_err(|e| format!("Failed to retrieve all highlights: {e}"))
+}
+
+#[tauri::command]
+pub async fn get_all_bookmarks(db: State<'_, Database>) -> Result<Vec<Bookmark>, String> {
+    db.get_all_bookmarks()
+        .map_err(|e| format!("Failed to retrieve all bookmarks: {e}"))
+}
+
+#[tauri::command]
 pub async fn delete_bookmark(
     db: State<'_, Database>,
     bookmark_id: String,
@@ -187,3 +200,39 @@ pub async fn delete_bookmark(
     db.delete_bookmark(&bookmark_id)
         .map_err(|e| format!("Failed to delete bookmark: {e}"))
 }
+
+#[tauri::command]
+pub async fn save_book_settings(
+    db: State<'_, Database>,
+    settings: BookSettings,
+) -> Result<(), String> {
+    db.save_book_settings(&settings)
+        .map_err(|e| format!("Failed to save book settings: {e}"))
+}
+
+#[tauri::command]
+pub async fn get_book_settings(
+    db: State<'_, Database>,
+    book_id: String,
+) -> Result<Option<BookSettings>, String> {
+    db.get_book_settings(&book_id)
+        .map_err(|e| format!("Failed to fetch book settings: {e}"))
+}
+
+#[tauri::command]
+pub async fn record_reading_session(
+    db: State<'_, Database>,
+    session: ReadingSession,
+) -> Result<(), String> {
+    db.record_reading_session(&session)
+        .map_err(|e| format!("Failed to record reading session: {e}"))
+}
+
+#[tauri::command]
+pub async fn get_reading_insights(
+    db: State<'_, Database>,
+) -> Result<ReadingInsights, String> {
+    db.get_reading_insights()
+        .map_err(|e| format!("Failed to compute reading insights: {e}"))
+}
+

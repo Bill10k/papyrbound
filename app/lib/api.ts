@@ -1,10 +1,13 @@
 import type {
   BookDetails,
+  BookSettings,
   BookSummary,
   Bookmark,
   ChapterContent,
   Highlight,
+  ReadingInsights,
   ReadingProgress,
+  ReadingSession,
   ResourceData,
 } from "../types/epub";
 
@@ -123,9 +126,34 @@ export async function getBookBookmarks(bookId: string): Promise<Bookmark[]> {
   return invoke<Bookmark[]>("get_book_bookmarks", { bookId });
 }
 
+export async function getAllHighlights(): Promise<Highlight[]> {
+  return invoke<Highlight[]>("get_all_highlights");
+}
+
+export async function getAllBookmarks(): Promise<Bookmark[]> {
+  return invoke<Bookmark[]>("get_all_bookmarks");
+}
+
 export async function deleteBookmark(bookmarkId: string): Promise<boolean> {
   return invoke<boolean>("delete_bookmark", { bookmarkId });
 }
+
+export async function saveBookSettings(settings: BookSettings): Promise<void> {
+  return invoke<void>("save_book_settings", { settings });
+}
+
+export async function getBookSettings(bookId: string): Promise<BookSettings | null> {
+  return invoke<BookSettings | null>("get_book_settings", { bookId });
+}
+
+export async function recordReadingSession(session: ReadingSession): Promise<void> {
+  return invoke<void>("record_reading_session", { session });
+}
+
+export async function getReadingInsights(): Promise<ReadingInsights> {
+  return invoke<ReadingInsights>("get_reading_insights");
+}
+
 
 export async function openBookFileDialog(): Promise<string | null> {
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
