@@ -9,7 +9,15 @@ import { BookOpen, Check, Eye, Heart, Plus, RotateCcw, Trash2 } from "lucide-rea
 import { useApp } from "../context/AppContext";
 
 export default function LibraryPage() {
-  const { books, openBook, deleteBookById, importNewBook, isImporting } = useApp();
+  const {
+    books,
+    openBook,
+    deleteBookById,
+    importNewBook,
+    isImporting,
+    toggleFavorite,
+    isFavorite,
+  } = useApp();
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
@@ -65,6 +73,7 @@ export default function LibraryPage() {
             >
               {books.map((book, index) => {
                 const progress = Math.round(book.progress_percent || 0);
+                const bookFavorited = isFavorite(book.id);
 
                 return (
                   <motion.article
@@ -81,24 +90,46 @@ export default function LibraryPage() {
                         },
                       },
                     }}
-                    className="relative text-left"
+                    className="relative text-left group"
                   >
-                    <motion.button
-                      type="button"
-                      whileHover={{ y: -5 }}
-                      onClick={() => {
-                        setSelectedBookId(book.id);
-                      }}
-                      onDoubleClick={() => openBook(book.id)}
-                      className="group block w-full text-left cursor-pointer"
-                      aria-label={`View details for ${book.title}`}
-                    >
-                      <BookCover
-                        src={book.cover_image || "/covers/ashfall-01.webp"}
-                        title={book.title}
-                        sizes="(max-width: 640px) 42vw, (max-width: 1280px) 22vw, 180px"
-                      />
-                    </motion.button>
+                    <div className="relative">
+                      <motion.button
+                        type="button"
+                        whileHover={{ y: -5 }}
+                        onClick={() => {
+                          setSelectedBookId(book.id);
+                        }}
+                        onDoubleClick={() => openBook(book.id)}
+                        className="group block w-full text-left cursor-pointer"
+                        aria-label={`View details for ${book.title}`}
+                      >
+                        <BookCover
+                          src={book.cover_image || "/covers/ashfall-01.webp"}
+                          title={book.title}
+                          sizes="(max-width: 640px) 42vw, (max-width: 1280px) 22vw, 180px"
+                        />
+                      </motion.button>
+
+                      {/* Quick Favorite Button on card */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(book.id);
+                        }}
+                        title={bookFavorited ? "Remove from favourites" : "Add to favourites"}
+                        className={`absolute top-2 right-2 p-1.5 rounded-full transition-all cursor-pointer ${
+                          bookFavorited
+                            ? "bg-rose-50 text-rose-600 shadow-md opacity-100"
+                            : "bg-mono-900/60 text-mono-50 hover:bg-mono-900 opacity-0 group-hover:opacity-100"
+                        }`}
+                      >
+                        <Heart
+                          className="size-3.5"
+                          fill={bookFavorited ? "currentColor" : "none"}
+                        />
+                      </button>
+                    </div>
+
                     <div className="mt-2 text-xs font-semibold truncate text-mono-900">
                       {book.title}
                     </div>
@@ -129,6 +160,18 @@ export default function LibraryPage() {
                             label: "Read Book",
                             icon: <BookOpen aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
                             onSelect: () => openBook(book.id),
+                          },
+                          {
+                            label: bookFavorited ? "Remove favourite" : "Add to favourites",
+                            icon: (
+                              <Heart
+                                aria-hidden="true"
+                                className={`size-4 ${bookFavorited ? "text-rose-600" : "text-sidebar-muted"}`}
+                                fill={bookFavorited ? "currentColor" : "none"}
+                                strokeWidth={1.5}
+                              />
+                            ),
+                            onSelect: () => toggleFavorite(book.id),
                           },
                           {
                             label: "View details",
@@ -171,14 +214,30 @@ export default function LibraryPage() {
                 </p>
               </div>
 
-              {/* Read Now Button */}
-              <button
-                onClick={() => openBook(selectedDetails.id)}
-                className="mt-2 w-full py-2.5 px-4 rounded-xl bg-mono-800 text-mono-50 hover:bg-mono-700 font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
-              >
-                <BookOpen className="size-4" />
-                Read Volume
-              </button>
+              {/* Action Buttons: Read Now + Favorite */}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={() => openBook(selectedDetails.id)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-mono-800 text-mono-50 hover:bg-mono-700 font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+                >
+                  <BookOpen className="size-4" />
+                  Read Volume
+                </button>
+                <button
+                  onClick={() => toggleFavorite(selectedDetails.id)}
+                  title={isFavorite(selectedDetails.id) ? "Remove from favourites" : "Add to favourites"}
+                  className={`p-2.5 rounded-xl border transition-colors cursor-pointer flex items-center justify-center ${
+                    isFavorite(selectedDetails.id)
+                      ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                      : "border-sidebar-border bg-sidebar-accent/50 text-sidebar-muted hover:text-mono-800 hover:bg-sidebar-accent"
+                  }`}
+                >
+                  <Heart
+                    className="size-4"
+                    fill={isFavorite(selectedDetails.id) ? "currentColor" : "none"}
+                  />
+                </button>
+              </div>
             </div>
 
             <div className="mt-6 border-t border-sidebar-border pt-4">

@@ -16,6 +16,8 @@ import {
   saveBookSettings,
   recordReadingSession,
 } from "../lib/api";
+import { Heart } from "lucide-react";
+import { useApp } from "../context/AppContext";
 import type { BookDetails, Bookmark, ChapterContent, Highlight, TocItem } from "../types/epub";
 
 interface ReaderProps {
@@ -68,6 +70,7 @@ const HIGHLIGHT_COLORS: { id: HighlightColor; name: string; bgClass: string; dot
 ];
 
 export default function Reader({ book, initialChapterIndex, onClose }: ReaderProps) {
+  const { toggleFavorite, isFavorite } = useApp();
   const [currentChapter, setCurrentChapter] = useState(initialChapterIndex ?? 0);
   const [chapterContent, setChapterContent] = useState<ChapterContent | null>(null);
   const [processedHtml, setProcessedHtml] = useState<string>("");
@@ -778,6 +781,23 @@ export default function Reader({ book, initialChapterIndex, onClose }: ReaderPro
 
         {/* Reader Preferences & Tools */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Favorite Book Button */}
+          <button
+            onClick={() => toggleFavorite(book.id)}
+            className={`size-8 rounded-lg grid place-items-center text-xs transition-all cursor-pointer ${
+              isFavorite(book.id)
+                ? "bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold"
+                : "hover:bg-black/5 dark:hover:bg-white/10 opacity-70"
+            }`}
+            title={isFavorite(book.id) ? "Remove from Favourites" : "Mark as Favourite"}
+          >
+            <Heart
+              className="size-4"
+              fill={isFavorite(book.id) ? "currentColor" : "none"}
+              strokeWidth={2}
+            />
+          </button>
+
           {/* Bookmark Active Chapter Button */}
           <button
             onClick={handleToggleBookmark}

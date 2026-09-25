@@ -7,6 +7,7 @@ import {
   BookCopy,
   Check,
   FolderPlus,
+  Heart,
   Pencil,
   PlayingCards,
   PlayingCardsFan,
@@ -26,7 +27,7 @@ import { useApp } from "../context/AppContext";
 type Dialog = "create" | "rename" | "delete" | null;
 
 export default function CollectionsPage() {
-  const { books, openBook } = useApp();
+  const { books, openBook, isFavorite } = useApp();
   const [customCollections, setCustomCollections] = useState<Collection[]>([]);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -37,6 +38,20 @@ export default function CollectionsPage() {
 
   // Dynamically generate collections from real books
   const dynamicCollections: Collection[] = books.length > 0 ? [
+    {
+      id: "favorites",
+      name: "Favourites",
+      description: "Your hand-picked favorite volumes and series.",
+      updated: "Updated recently",
+      books: books
+        .filter((b) => isFavorite(b.id))
+        .map((b) => ({
+          title: b.title,
+          cover: b.cover_image || "/covers/ashfall-01.webp",
+          author: b.author || "Unknown Author",
+          progress: b.progress_percent,
+        })),
+    },
     {
       id: "all-volumes",
       name: "All Volumes",
@@ -259,16 +274,23 @@ export default function CollectionsPage() {
                       aria-pressed={selectedCollection === collection.id}
                     >
                       <div className="grid h-44 grid-cols-3 gap-2 overflow-hidden rounded-lg p-2 bg-mono-150/40">
-                        {collection.books.slice(0, 3).map((book) => (
-                          <BookCover
-                            key={book.title}
-                            src={book.cover}
-                            title={book.title}
-                            sizes="(max-width: 640px) 28vw, (max-width: 1280px) 14vw, 120px"
-                            className="h-full"
-                            zoomOnHover={false}
-                          />
-                        ))}
+                        {collection.books.length === 0 ? (
+                          <div className="col-span-3 flex flex-col items-center justify-center text-mono-400 text-xs gap-2 h-full">
+                            <Heart className="size-6 text-mono-400 stroke-[1.5]" />
+                            <span className="text-[11px] font-sans text-mono-500">No books added yet</span>
+                          </div>
+                        ) : (
+                          collection.books.slice(0, 3).map((book) => (
+                            <BookCover
+                              key={book.title}
+                              src={book.cover}
+                              title={book.title}
+                              sizes="(max-width: 640px) 28vw, (max-width: 1280px) 14vw, 120px"
+                              className="h-full"
+                              zoomOnHover={false}
+                            />
+                          ))
+                        )}
                       </div>
                       <div className="mt-4 pr-9">
                         <h3 className="truncate text-lg tracking-[-0.035em]">{collection.name}</h3>
@@ -355,32 +377,41 @@ export default function CollectionsPage() {
               <span className="font-mono text-[11px] text-sidebar-foreground">{selectedCollectionDetails.books.length}</span>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {selectedCollectionDetails.books.map((book) => {
-                const matched = books.find((b) => b.title.toLowerCase() === book.title.toLowerCase());
-                return (
-                  <div
-                    key={book.title}
-                    onClick={() => {
-                      if (matched) {
-                        openBook(matched.id);
-                      } else if (books.length > 0) {
-                        openBook(books[0].id);
-                      }
-                    }}
-                    className="cursor-pointer group"
-                  >
-                    <BookCover
-                      src={matched?.cover_image || book.cover}
-                      title={book.title}
-                      sizes="96px"
-                      className="h-36"
-                      zoomOnHover={true}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            {selectedCollectionDetails.books.length === 0 ? (
+              <div className="mt-6 flex flex-col items-center justify-center py-10 text-center border border-dashed border-sidebar-border rounded-xl p-6 bg-mono-50/50">
+                <Heart className="size-8 text-sidebar-muted mb-2 stroke-[1.5]" />
+                <p className="text-xs text-sidebar-muted max-w-xs">
+                  No books in this collection yet. Mark books as favourite in your library to see them listed here.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 grid grid-cols-3 gap-3">
+                {selectedCollectionDetails.books.map((book) => {
+                  const matched = books.find((b) => b.title.toLowerCase() === book.title.toLowerCase());
+                  return (
+                    <div
+                      key={book.title}
+                      onClick={() => {
+                        if (matched) {
+                          openBook(matched.id);
+                        } else if (books.length > 0) {
+                          openBook(books[0].id);
+                        }
+                      }}
+                      className="cursor-pointer group"
+                    >
+                      <BookCover
+                        src={matched?.cover_image || book.cover}
+                        title={book.title}
+                        sizes="96px"
+                        className="h-36"
+                        zoomOnHover={true}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <dl className="mt-7 text-sm leading-relaxed">
               <div className="border-t border-sidebar-border py-4">

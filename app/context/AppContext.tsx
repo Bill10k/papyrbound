@@ -16,6 +16,7 @@ interface AppContextType {
   books: BookSummary[];
   highlights: Highlight[];
   bookmarks: Bookmark[];
+  favorites: string[];
   isLoading: boolean;
   isImporting: boolean;
   errorMessage: string | null;
@@ -26,6 +27,8 @@ interface AppContextType {
   importNewBook: () => Promise<void>;
   refreshData: () => Promise<void>;
   deleteBookById: (bookId: string) => Promise<void>;
+  toggleFavorite: (bookId: string) => void;
+  isFavorite: (bookId: string) => boolean;
   setErrorMessage: (msg: string | null) => void;
 }
 
@@ -35,11 +38,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [activeReadingBook, setActiveReadingBook] = useState<BookDetails | null>(null);
   const [initialChapterIndex, setInitialChapterIndex] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Load favorites from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("papyrbound_favorites");
+      if (saved) {
+        setFavorites(JSON.parse(saved));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleFavorite = (bookId: string) => {
+    setFavorites((prev) => {
+      const updated = prev.includes(bookId)
+        ? prev.filter((id) => id !== bookId)
+        : [...prev, bookId];
+      try {
+        localStorage.setItem("papyrbound_favorites", JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
+
+  const isFavorite = (bookId: string) => favorites.includes(bookId);
 
   const refreshData = useCallback(async () => {
     setIsLoading(true);
@@ -120,6 +152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         books,
         highlights,
         bookmarks,
+        favorites,
         isLoading,
         isImporting,
         errorMessage,
@@ -130,6 +163,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         importNewBook,
         refreshData,
         deleteBookById,
+        toggleFavorite,
+        isFavorite,
         setErrorMessage,
       }}
     >
