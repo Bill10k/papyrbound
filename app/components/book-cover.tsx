@@ -34,18 +34,31 @@ export default function BookCover({
     <div
       className={`relative overflow-hidden ${variantClasses[variant]} ${className}`}
     >
-      <Image
-        src={src}
-        alt={`${title} cover`}
-        fill
-        sizes={sizes}
-        preload={preload}
-        className={`object-cover ${
-          zoomOnHover
-            ? "transition-transform duration-500 group-hover:scale-[1.025]"
-            : ""
-        }`}
-      />
+      {src.startsWith("data:") ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={src}
+          alt={`${title} cover`}
+          className={`w-full h-full object-cover ${
+            zoomOnHover
+              ? "transition-transform duration-500 group-hover:scale-[1.025]"
+              : ""
+          }`}
+        />
+      ) : (
+        <Image
+          src={src}
+          alt={`${title} cover`}
+          fill
+          sizes={sizes}
+          preload={preload}
+          className={`object-cover ${
+            zoomOnHover
+              ? "transition-transform duration-500 group-hover:scale-[1.025]"
+              : ""
+          }`}
+        />
+      )}
     </div>
   );
 }

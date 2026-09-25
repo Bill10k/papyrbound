@@ -1,9 +1,31 @@
-import React from 'react'
+"use client";
 
-const page = () => {
+import React from "react";
+import AnnotationsView from "../components/AnnotationsView";
+import { useApp } from "../context/AppContext";
+import { deleteHighlight, deleteBookmark } from "../lib/api";
+
+export default function AnnotationsPage() {
+  const { highlights, bookmarks, books, openBook, refreshData } = useApp();
+
+  const handleDeleteHighlight = async (id: string) => {
+    await deleteHighlight(id);
+    await refreshData();
+  };
+
+  const handleDeleteBookmark = async (id: string) => {
+    await deleteBookmark(id);
+    await refreshData();
+  };
+
   return (
-    <div>This is the annotations page</div>
-  )
-}
-
-export default page
+    <AnnotationsView
+      highlights={highlights}
+      bookmarks={bookmarks}
+      books={books}
+      onOpenBookToChapter={(bookId, chIdx) => openBook(bookId, chIdx)}
+      onDeleteHighlight={handleDeleteHighlight}
+      onDeleteBookmark={handleDeleteBookmark}
+    />
+  );
+}

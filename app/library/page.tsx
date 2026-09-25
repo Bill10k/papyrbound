@@ -2,90 +2,19 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { recentReads, favourites } from "../(Home)/data";
 import BookCover from "@/app/components/book-cover";
 import ContextMenu from "@/app/components/context-menu";
 import DetailsSidebar from "@/app/components/details-sidebar";
-import { Check, Eye, Heart, RotateCcw, Trash2 } from "lucide-react";
-
-const shelfBooks = [
-  {
-    ...favourites[0],
-    title: "A Passage to India",
-    author: "E. M. Forster",
-    progress: 0,
-  },
-  {
-    ...recentReads[2],
-    title: "From the Earth to the Moon",
-    author: "Jules Verne",
-    progress: 38,
-  },
-  {
-    ...recentReads[0],
-    title: "Indian Fairy Tales",
-    author: "Joseph Jacobs",
-    progress: 0,
-  },
-  {
-    ...favourites[2],
-    title: "On a Chinese Screen",
-    author: "W. Somerset Maugham",
-    progress: 100,
-  },
-  {
-    ...recentReads[3],
-    title: "Short Fiction",
-    author: "Ray Bradbury",
-    progress: 25,
-  },
-  {
-    ...recentReads[1],
-    title: "The Adventures of Sherlock Holmes",
-    author: "Arthur Conan Doyle",
-    progress: 2,
-  },
-  {
-    ...favourites[1],
-    title: "The Gambler",
-    author: "Fyodor Dostoevsky",
-    progress: 54,
-  },
-  {
-    ...favourites[0],
-    title: "The Jungle Book",
-    author: "Rudyard Kipling",
-    progress: 0,
-  },
-  { ...recentReads[1], title: "The Odyssey", author: "Homer", progress: 100 },
-];
-
-const details = shelfBooks[5];
+import { BookOpen, Check, Eye, Heart, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { useApp } from "../context/AppContext";
 
 export default function LibraryPage() {
-  const [selectedBook, setSelectedBook] = useState(details.title);
+  const { books, openBook, deleteBookById, importNewBook, isImporting } = useApp();
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [hiddenBookTitles, setHiddenBookTitles] = useState<string[]>([]);
-  const [progressByTitle, setProgressByTitle] = useState<Record<string, number>>(
-    () => Object.fromEntries(shelfBooks.map((book) => [book.title, book.progress])),
-  );
-  const visibleBooks = shelfBooks.filter(
-    (book) => !hiddenBookTitles.includes(book.title),
-  );
-  const selectedDetails =
-    visibleBooks.find((book) => book.title === selectedBook) ??
-    visibleBooks[0] ??
-    details;
-  const selectedProgress = progressByTitle[selectedDetails.title] ?? selectedDetails.progress;
 
-  const removeBook = (title: string) => {
-    setHiddenBookTitles((current) => [...current, title]);
-
-    if (title === selectedBook) {
-      const nextBook = visibleBooks.find((book) => book.title !== title);
-      if (nextBook) setSelectedBook(nextBook.title);
-    }
-  };
+  const activeId = selectedBookId || (books.length > 0 ? books[0].id : null);
+  const selectedDetails = books.find((b) => b.id === activeId) ?? books[0];
 
   return (
     <main
@@ -94,199 +23,209 @@ export default function LibraryPage() {
     >
       <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)_minmax(320px,0.36fr)]">
         <section className="min-w-0 px-7 pb-12 pt-16 xl:px-8">
-          <div className="h-16" />
+          <div className="h-4" />
           <div className="mb-5 flex items-end justify-between border-b border-[#d3c9b5] pb-3">
-            <span className="flex items-center gap-2 text-2xl tracking-[-0.045em]">
-              <h1 className="">All books</h1>
-              <span>(24)</span>
+            <span className="flex items-center gap-2 text-2xl tracking-[-0.045em] font-serif">
+              <h1 className="font-bold">All books</h1>
+              <span className="text-base font-mono text-sidebar-muted">({books.length})</span>
             </span>
-            {/* <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-">09 books</span> */}
+            <button
+              onClick={importNewBook}
+              disabled={isImporting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mono-800 text-mono-50 hover:bg-mono-700 transition-colors cursor-pointer"
+            >
+              <Plus className="size-3.5" />
+              Import Book
+            </button>
           </div>
 
-          <motion.div
-            className="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-3 xl:grid-cols-5"
-            initial="hidden"
-            animate="show"
-          >
-            {visibleBooks.map((book, index) => {
-              const progress = progressByTitle[book.title] ?? book.progress;
-
-              return (
-              <motion.article
-                key={`${book.title}-${index}`}
-                variants={{
-                  hidden: { opacity: 0, y: 14 },
-                  show: {
-                    opacity: 1,
-                    y: 0,
-                    transition: {
-                      delay: index * 0.045,
-                      duration: 0.35,
-                      ease: [0.22, 1, 0.36, 1],
-                    },
-                  },
-                }}
-                className="relative text-left"
+          {books.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-full bg-mono-200 flex items-center justify-center text-mono-600 mb-4">
+                <BookOpen className="size-8" />
+              </div>
+              <h2 className="text-xl font-serif font-bold text-mono-800">Your library is empty</h2>
+              <p className="text-sm text-mono-500 max-w-sm mt-1 mb-6">
+                Import your favorite EPUB books or CBZ / ZIP comic volumes to begin reading.
+              </p>
+              <button
+                onClick={importNewBook}
+                disabled={isImporting}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-mono-800 text-mono-50 hover:bg-mono-700 shadow-sm cursor-pointer"
               >
-                <motion.button
-                  type="button"
-                  whileHover={{ y: -5 }}
-                  onClick={() => setSelectedBook(book.title)}
-                  className="group block w-full text-left"
-                  aria-label={`View details for ${book.title}`}
-                >
-                  <BookCover
-                    src={book.cover}
-                    title={book.title}
-                    sizes="(max-width: 640px) 42vw, (max-width: 1280px) 22vw, 180px"
-                  />
-                </motion.button>
-                <div className="mt-1 grid grid-cols-[1fr_auto] items-center text-sidebar-muted">
-                  <div className="inline-block rounded-full py-1 text-[11px] text-sidebar-background">
-                    {progress === 0 ? (
-                      <span className="border-2 rounded-full text-accent-foreground  px-1 py-px text-[9px] bg-input">
-                        New
-                      </span>
-                    ) : progress === 100 ? (
-                      <span className="">
-                        Finished
-                      </span>
-                    ) : (
-                      <span className="">
-                        {progress}%
-                      </span>
-                    )}
-                  </div>
+                <Plus className="size-4" />
+                Select File to Import
+              </button>
+            </div>
+          ) : (
+            <motion.div
+              className="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-3 xl:grid-cols-5"
+              initial="hidden"
+              animate="show"
+            >
+              {books.map((book, index) => {
+                const progress = Math.round(book.progress_percent || 0);
 
-                  <ContextMenu
-                    ariaLabel={`Actions for ${book.title}`}
-                    menuId={`book-actions-${index}`}
-                    open={activeMenu === book.title}
-                    onOpenChange={(open) => setActiveMenu(open ? book.title : null)}
-                    alignmentClassName={`${
-                      index % 2 === 0
-                        ? "left-0 right-auto"
-                        : "left-auto right-0"
-                    } ${
-                      index % 3 === 0
-                        ? "sm:left-0 sm:right-auto"
-                        : "sm:left-auto sm:right-0"
-                    } ${
-                      index % 5 === 0
-                        ? "xl:left-0 xl:right-auto"
-                        : "xl:left-auto xl:right-0"
-                    }`}
-                    items={[
-                      {
-                        label: "View details",
-                        icon: <Eye aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
-                        onSelect: () => setSelectedBook(book.title),
+                return (
+                  <motion.article
+                    key={book.id}
+                    variants={{
+                      hidden: { opacity: 0, y: 14 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        transition: {
+                          delay: index * 0.045,
+                          duration: 0.35,
+                          ease: [0.22, 1, 0.36, 1],
+                        },
                       },
-                      {
-                        label: "Add to favourites",
-                        icon: <Heart aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
-                        onSelect: () =>
-                          setProgressByTitle((current) => ({
-                            ...current,
-                            [book.title]: progress === 100 ? 0 : 100,
-                          })),
-                      },
-                      {
-                        label: progress === 100 ? "Mark as unread" : "Mark as finished",
-                        icon:
-                          progress === 100 ? (
-                            <RotateCcw aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                          ) : (
-                            <Check aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />
-                          ),
-                        onSelect: () =>
-                          setProgressByTitle((current) => ({
-                            ...current,
-                            [book.title]: progress === 100 ? 0 : 100,
-                          })),
-                      },
-                      {
-                        label: "Delete",
-                        icon: <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />,
-                        onSelect: () => removeBook(book.title),
-                        destructive: true,
-                        dividerBefore: true,
-                      },
-                    ]}
-                  />
-                </div>
-              </motion.article>
-              );
-            })}
-          </motion.div>
+                    }}
+                    className="relative text-left"
+                  >
+                    <motion.button
+                      type="button"
+                      whileHover={{ y: -5 }}
+                      onClick={() => {
+                        setSelectedBookId(book.id);
+                      }}
+                      onDoubleClick={() => openBook(book.id)}
+                      className="group block w-full text-left cursor-pointer"
+                      aria-label={`View details for ${book.title}`}
+                    >
+                      <BookCover
+                        src={book.cover_image || "/covers/ashfall-01.webp"}
+                        title={book.title}
+                        sizes="(max-width: 640px) 42vw, (max-width: 1280px) 22vw, 180px"
+                      />
+                    </motion.button>
+                    <div className="mt-2 text-xs font-semibold truncate text-mono-900">
+                      {book.title}
+                    </div>
+                    <div className="text-[11px] text-mono-500 truncate">
+                      {book.author || "Unknown Author"}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-sidebar-muted">
+                      <div className="inline-block rounded-full text-[10px]">
+                        {progress === 0 ? (
+                          <span className="border rounded-full text-mono-600 px-1.5 py-0.5 text-[9px] bg-mono-200/60">
+                            New
+                          </span>
+                        ) : progress >= 99 ? (
+                          <span className="text-emerald-700 font-medium">Finished</span>
+                        ) : (
+                          <span className="font-mono">{progress}%</span>
+                        )}
+                      </div>
+
+                      <ContextMenu
+                        ariaLabel={`Actions for ${book.title}`}
+                        menuId={`book-actions-${index}`}
+                        open={activeMenu === book.id}
+                        onOpenChange={(open) => setActiveMenu(open ? book.id : null)}
+                        alignmentClassName={index % 2 === 0 ? "left-0 right-auto" : "left-auto right-0"}
+                        items={[
+                          {
+                            label: "Read Book",
+                            icon: <BookOpen aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
+                            onSelect: () => openBook(book.id),
+                          },
+                          {
+                            label: "View details",
+                            icon: <Eye aria-hidden="true" className="size-4 text-sidebar-muted" strokeWidth={1.5} />,
+                            onSelect: () => setSelectedBookId(book.id),
+                          },
+                          {
+                            label: "Delete",
+                            icon: <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />,
+                            onSelect: () => deleteBookById(book.id),
+                            destructive: true,
+                            dividerBefore: true,
+                          },
+                        ]}
+                      />
+                    </div>
+                  </motion.article>
+                );
+              })}
+            </motion.div>
+          )}
         </section>
 
-        <DetailsSidebar contentKey={selectedBook} ariaLabel={`${selectedDetails.title} details`}>
-          <div className="mt-5 flex flex-col gap-4">
-            <BookCover
-              src={selectedDetails.cover}
-              title={selectedDetails.title}
-              sizes="144px"
-              variant="detail"
-              className="w-full shrink-0"
-            />
-            <div className=""></div>
-            <div className="min-w-0 pt-1">
-              <h2 className="text-xl leading-[1.1] tracking-[-0.035em]">
-                {selectedDetails.title}
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-sidebar-muted">
-                {selectedDetails.author}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-7 border-t border-sidebar-border pt-5">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-sidebar-muted">Reading progress</span>
-              <span className="font-mono text-[11px] text-sidebar-foreground">
-                {selectedProgress}%
-              </span>
-            </div>
-            <div className="mt-3 h-1 overflow-hidden rounded-full bg-sidebar-foreground/8">
-              <div
-                className="h-full rounded-full bg-sidebar-foreground"
-                style={{ width: `${selectedProgress}%` }}
+        {selectedDetails && (
+          <DetailsSidebar contentKey={selectedDetails.id} ariaLabel={`${selectedDetails.title} details`}>
+            <div className="mt-5 flex flex-col gap-4">
+              <BookCover
+                src={selectedDetails.cover_image || "/covers/ashfall-01.webp"}
+                title={selectedDetails.title}
+                sizes="144px"
+                variant="detail"
+                className="w-full shrink-0"
               />
-            </div>
-          </div>
+              <div className="min-w-0 pt-1">
+                <h2 className="text-xl font-serif font-bold leading-[1.15] tracking-[-0.035em]">
+                  {selectedDetails.title}
+                </h2>
+                <p className="mt-1 text-sm leading-relaxed text-sidebar-muted">
+                  {selectedDetails.author || "Unknown Author"}
+                </p>
+              </div>
 
-          <dl className="mt-6 text-sm leading-relaxed">
-            <div className="border-t border-sidebar-border py-4">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
-                Last read
-              </dt>
-              <dd className="mt-1">11/7/2021 2:56:48 PM</dd>
+              {/* Read Now Button */}
+              <button
+                onClick={() => openBook(selectedDetails.id)}
+                className="mt-2 w-full py-2.5 px-4 rounded-xl bg-mono-800 text-mono-50 hover:bg-mono-700 font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+              >
+                <BookOpen className="size-4" />
+                Read Volume
+              </button>
             </div>
-            <div className="border-t border-sidebar-border py-4">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
-                Date added
-              </dt>
-              <dd className="mt-1">11/7/2021 2:14:40 PM</dd>
-            </div>
-            <div className="border-t border-sidebar-border py-4">
-              <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
-                About this book
-              </dt>
-              <dd className="mt-1 text-sidebar-muted">
-                The world’s first consulting detective investigates a variety of
-                intriguing cases in the first Holmes short story collection.
-              </dd>
-            </div>
-          </dl>
 
-          <div className="mt-auto pt-7">
-            <p className="rounded-md bg-sidebar-accent px-3 py-2 text-sm text-sidebar-muted">
-              Fiction · Detective and mystery stories
-            </p>
-          </div>
-        </DetailsSidebar>
+            <div className="mt-6 border-t border-sidebar-border pt-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-sidebar-muted">Reading progress</span>
+                <span className="font-mono text-[11px] font-semibold text-sidebar-foreground">
+                  {Math.round(selectedDetails.progress_percent || 0)}%
+                </span>
+              </div>
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-sidebar-foreground/8">
+                <div
+                  className="h-full rounded-full bg-sidebar-foreground transition-all duration-300"
+                  style={{ width: `${Math.min(100, selectedDetails.progress_percent || 0)}%` }}
+                />
+              </div>
+            </div>
+
+            <dl className="mt-5 text-sm leading-relaxed">
+              <div className="border-t border-sidebar-border py-3">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
+                  Chapters / Pages
+                </dt>
+                <dd className="mt-1 font-mono text-xs">
+                  {selectedDetails.current_chapter + 1} of {selectedDetails.total_chapters || 1}
+                </dd>
+              </div>
+              <div className="border-t border-sidebar-border py-3">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
+                  Format / File
+                </dt>
+                <dd className="mt-1 font-mono text-xs truncate text-sidebar-muted">
+                  {selectedDetails.file_path.split(/[\\/]/).pop()}
+                </dd>
+              </div>
+              <div className="border-t border-sidebar-border py-3">
+                <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sidebar-muted">
+                  Date Added
+                </dt>
+                <dd className="mt-1 text-xs text-sidebar-muted">
+                  {new Date(selectedDetails.created_at).toLocaleDateString()}
+                </dd>
+              </div>
+            </dl>
+          </DetailsSidebar>
+        )}
       </div>
     </main>
   );
 }
+

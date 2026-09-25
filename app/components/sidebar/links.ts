@@ -1,4 +1,4 @@
-export type SidebarLinkName = "Home" | "Library" | "Collections" | "Annotations" | "Settings";
+export type SidebarLinkName = "Home" | "Library" | "Collections" | "Annotations" | "Insights" | "Settings";
 
 interface LinkProps {
   name: SidebarLinkName;
@@ -18,9 +18,13 @@ export const links: LinkProps[] = [
     name: "Collections",
     path: "/collections",
   },
-   {
+  {
     name: "Annotations",
     path: "/annotations",
+  },
+  {
+    name: "Insights",
+    path: "/insights",
   },
   {
     name: "Settings",

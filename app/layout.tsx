@@ -18,6 +18,8 @@ const geistMono = Geist_Mono({
   weight: "500",
 });
 
+import ClientShell from "./components/ClientShell";
+
 export const metadata: Metadata = {
   title: "Papyrbound — Your graphic library",
   description:
@@ -31,13 +33,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${haffer.variable} ${geistMono.variable}`}>
-      <body className="grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] bg-mono-100">
-        <div className="pl-1">
-          <Sidebar />
-        </div>
-        <div className="min-w-0 pl-0">
-          {children}
-        </div>
+      <body className="min-h-dvh bg-mono-100 antialiased">
+        <ClientShell>{children}</ClientShell>
       </body>
     </html>
   );

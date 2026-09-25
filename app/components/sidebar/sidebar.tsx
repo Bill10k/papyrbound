@@ -9,11 +9,13 @@ import {
   StickyNotes,
   House,
   LibraryBig,
+  BarChart3,
   Settings,
   BookCopy,
   type LucideIcon,
 } from "lucide-react";
 import { links, type SidebarLinkName } from "./links";
+import { useApp } from "../../context/AppContext";
 import {
   addButtonVariants,
   dropdownItemVariants,
@@ -28,6 +30,7 @@ const navIcons: Record<SidebarLinkName, LucideIcon> = {
   Library: LibraryBig,
   Collections: BookCopy,
   Annotations: StickyNotes,
+  Insights: BarChart3,
   Settings,
 };
 
@@ -35,6 +38,7 @@ type LibraryFilter = "all" | "favorites" | "not started" | "reading" | "complete
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { books, highlights, bookmarks, importNewBook, isImporting } = useApp();
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const reduceMotion = useReducedMotion();
@@ -60,13 +64,19 @@ export default function Sidebar() {
         <motion.button
           type="button"
           aria-label="Add a book"
-          className="grid size-9 place-items-center rounded-md text-sidebar-foreground transition-colors duration-(--duration-fast) hover:bg-sidebar-accent"
+          onClick={importNewBook}
+          disabled={isImporting}
+          className="grid size-9 place-items-center rounded-md text-sidebar-foreground transition-colors duration-(--duration-fast) hover:bg-sidebar-accent cursor-pointer disabled:opacity-50"
           variants={addButtonVariants}
           whileHover={reduceMotion ? undefined : "hover"}
           whileTap={reduceMotion ? undefined : "tap"}
           transition={spring}
         >
-          <Asterisk aria-hidden="true" className="size-6" strokeWidth={1.5} />
+          <Asterisk
+            aria-hidden="true"
+            className={`size-6 ${isImporting ? "animate-spin text-amber-600" : ""}`}
+            strokeWidth={1.5}
+          />
         </motion.button>
       </header>
 
@@ -119,7 +129,12 @@ export default function Sidebar() {
                       <span className="relative z-10">{link.name}</span>
                       {link.name === "Library" && (
                         <span className="relative z-10 ml-auto rounded-full bg-sidebar-foreground/8 px-2 py-0.5 font-mono text-[10px] text-sidebar-muted">
-                          24
+                          {books.length}
+                        </span>
+                      )}
+                      {link.name === "Annotations" && (highlights.length + bookmarks.length > 0) && (
+                        <span className="relative z-10 ml-auto rounded-full bg-sidebar-foreground/8 px-2 py-0.5 font-mono text-[10px] text-sidebar-muted">
+                          {highlights.length + bookmarks.length}
                         </span>
                       )}
                     </Link>

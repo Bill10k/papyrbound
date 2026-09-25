@@ -21,10 +21,12 @@ import ContextMenu from "@/app/components/context-menu";
 import DetailsSidebar from "@/app/components/details-sidebar";
 import { favourites, recentReads } from "../(Home)/data";
 import { initialCollections, type Collection } from "./data";
+import { useApp } from "../context/AppContext";
 
 type Dialog = "create" | "rename" | "delete" | null;
 
 export default function CollectionsPage() {
+  const { books, openBook } = useApp();
   const [collections, setCollections] = useState(initialCollections);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
@@ -278,16 +280,30 @@ export default function CollectionsPage() {
             </div>
 
             <div className="mt-6 grid grid-cols-3 gap-3">
-              {selectedCollectionDetails.books.map((book) => (
-                <BookCover
-                  key={book.title}
-                  src={book.cover}
-                  title={book.title}
-                  sizes="96px"
-                  className="h-36"
-                  zoomOnHover={false}
-                />
-              ))}
+              {selectedCollectionDetails.books.map((book) => {
+                const matched = books.find((b) => b.title.toLowerCase() === book.title.toLowerCase());
+                return (
+                  <div
+                    key={book.title}
+                    onClick={() => {
+                      if (matched) {
+                        openBook(matched.id);
+                      } else if (books.length > 0) {
+                        openBook(books[0].id);
+                      }
+                    }}
+                    className="cursor-pointer group"
+                  >
+                    <BookCover
+                      src={matched?.cover_image || book.cover}
+                      title={book.title}
+                      sizes="96px"
+                      className="h-36"
+                      zoomOnHover={true}
+                    />
+                  </div>
+                );
+              })}
             </div>
 
             <dl className="mt-7 text-sm leading-relaxed">
