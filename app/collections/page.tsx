@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import BookCover from "@/app/components/book-cover";
 import ContextMenu from "@/app/components/context-menu";
+import DetailsSidebar from "@/app/components/details-sidebar";
 import { favourites, recentReads } from "../(Home)/data";
 import { initialCollections, type Collection } from "./data";
 
@@ -246,14 +247,12 @@ export default function CollectionsPage() {
 
       <AnimatePresence>
         {selectedCollectionDetails && (
-          <motion.aside
-            key={selectedCollectionDetails.id}
-            aria-label={`${selectedCollectionDetails.name} details`}
-            initial={reduceMotion ? false : { opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 12 }}
-            transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed right-1 top-1 z-30 flex h-[calc(100dvh-0.5rem)] w-[min(360px,calc(100vw-2rem))] flex-col overflow-y-auto rounded-lg border border-sidebar-border bg-sidebar px-6 pb-8 pt-7 text-sidebar-foreground shadow-[0_18px_44px_rgba(42,37,26,0.16)]"
+          <DetailsSidebar
+            contentKey={selectedCollectionDetails.id}
+            ariaLabel={`${selectedCollectionDetails.name} details`}
+            variant="overlay"
+            reduceMotion={reduceMotion}
+            className="shadow-[0_18px_44px_rgba(42,37,26,0.16)]"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -301,7 +300,7 @@ export default function CollectionsPage() {
                 <dd className="mt-1 text-sidebar-muted">{selectedCollectionDetails.description}</dd>
               </div>
             </dl>
-          </motion.aside>
+          </DetailsSidebar>
         )}
 
         {dialog && (
@@ -327,7 +326,7 @@ export default function CollectionsPage() {
             >
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-mono-600">Collections</p>
+                  {/* <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-mono-600">Collections</p> */}
                   <h2 id="collection-dialog-title" className="mt-1 text-xl tracking-[-0.035em]">
                     {dialog === "create" ? "New collection" : dialog === "rename" ? "Rename collection" : "Delete collection"}
                   </h2>

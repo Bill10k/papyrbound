@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { recentReads, favourites } from "../(Home)/data";
 import BookCover from "@/app/components/book-cover";
 import ContextMenu from "@/app/components/context-menu";
+import DetailsSidebar from "@/app/components/details-sidebar";
 import { Check, Eye, Heart, RotateCcw, Trash2 } from "lucide-react";
 
 const shelfBooks = [
@@ -220,13 +221,7 @@ export default function LibraryPage() {
           </motion.div>
         </section>
 
-        <motion.aside
-          key={selectedBook}
-          initial={{ opacity: 0, x: 14 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="sticky top-1 m-1 flex h-[calc(100dvh-0.5rem)] min-w-0 flex-col overflow-y-auto rounded-lg border border-sidebar-border bg-sidebar px-6 pb-8 pt-7 text-sidebar-foreground shadow-xs"
-        >
+        <DetailsSidebar contentKey={selectedBook} ariaLabel={`${selectedDetails.title} details`}>
           <div className="mt-5 flex flex-col gap-4">
             <BookCover
               src={selectedDetails.cover}
@@ -290,7 +285,7 @@ export default function LibraryPage() {
               Fiction · Detective and mystery stories
             </p>
           </div>
-        </motion.aside>
+        </DetailsSidebar>
       </div>
     </main>
   );
