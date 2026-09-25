@@ -1,20 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
+import Sidebar from "./components/sidebar/sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const haffer = localFont({
+  src: "./fonts/Haffer-Medium.otf",
+  variable: "--font-haffer",
+  weight: "500",
+  style: "normal",
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  weight: "500",
 });
 
 export const metadata: Metadata = {
-  title: "Papyrbound",
-  description: "A quiet place for words worth keeping.",
+  title: "Papyrbound — Your graphic library",
+  description:
+    "A modern desktop library for comics, manga, and illustrated books.",
 };
 
 export default function RootLayout({
@@ -23,11 +30,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${haffer.variable} ${geistMono.variable}`}>
+      <body className="grid min-h-dvh grid-cols-[288px_minmax(0,1fr)] bg-mono-100">
+        <div className="pl-1">
+          <Sidebar />
+        </div>
+        <div className="min-w-0 pl-0">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }
