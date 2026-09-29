@@ -12,6 +12,8 @@ import {
   BarChart3,
   Settings,
   BookCopy,
+  User,
+  LogIn,
   type LucideIcon,
 } from "lucide-react";
 import { links, type SidebarLinkName } from "./links";
@@ -38,7 +40,7 @@ type LibraryFilter = "all" | "favorites" | "not started" | "reading" | "complete
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { books, highlights, bookmarks, importNewBook, isImporting } = useApp();
+  const { books, highlights, bookmarks, importNewBook, isImporting, user, setAuthModalOpen } = useApp();
   const [libraryCollapsed, setLibraryCollapsed] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const reduceMotion = useReducedMotion();
@@ -221,6 +223,45 @@ export default function Sidebar() {
           </div>
         </LayoutGroup>
       </nav>
+
+      {/* User Account / Profile Footer */}
+      <footer className="p-3 border-t border-sidebar-border bg-sidebar/50">
+        {user ? (
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent text-left transition-colors cursor-pointer group"
+          >
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.display_name}
+                className="size-8 rounded-full object-cover border border-sidebar-border"
+              />
+            ) : (
+              <div className="size-8 rounded-full bg-mono-800 text-mono-50 grid place-items-center font-bold text-xs">
+                {user.display_name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-sidebar-foreground truncate">
+                {user.display_name}
+              </p>
+              <p className="text-[11px] text-sidebar-muted truncate font-mono">
+                @{user.username}
+              </p>
+            </div>
+            <span className="size-2 rounded-full bg-emerald-500 shrink-0" title="Online" />
+          </button>
+        ) : (
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-sidebar-border bg-sidebar hover:bg-sidebar-accent text-sidebar-foreground text-xs font-medium transition-colors cursor-pointer shadow-xs"
+          >
+            <LogIn className="size-3.5 text-sidebar-muted" />
+            <span>Sign In / Connect</span>
+          </button>
+        )}
+      </footer>
     </aside>
   );
 }

@@ -10,6 +10,17 @@ import {
   getAllHighlights,
   getAllBookmarks,
 } from "../lib/api";
+import {
+  UserProfile,
+  RegisterPayload,
+  LoginPayload,
+  registerUser,
+  loginUser,
+  logoutUser,
+  getCurrentUser,
+  getStoredToken,
+  getStoredUser,
+} from "../lib/auth-api";
 import type { BookDetails, Bookmark, BookSummary, Highlight } from "../types/epub";
 
 interface AppContextType {
@@ -17,6 +28,10 @@ interface AppContextType {
   highlights: Highlight[];
   bookmarks: Bookmark[];
   favorites: string[];
+  user: UserProfile | null;
+  token: string | null;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
   isLoading: boolean;
   isImporting: boolean;
   errorMessage: string | null;
@@ -29,6 +44,9 @@ interface AppContextType {
   deleteBookById: (bookId: string) => Promise<void>;
   toggleFavorite: (bookId: string) => void;
   isFavorite: (bookId: string) => boolean;
+  login: (payload: LoginPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => Promise<void>;
   setErrorMessage: (msg: string | null) => void;
 }
 
@@ -39,11 +57,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(getStoredUser());
+  const [token, setToken] = useState<string | null>(getStoredToken());
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [activeReadingBook, setActiveReadingBook] = useState<BookDetails | null>(null);
   const [initialChapterIndex, setInitialChapterIndex] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Validate stored session on startup
+  useEffect(() => {
+    const savedToken = getStoredToken();
+    if (savedToken) {
+      getCurrentUser(savedToken)
+        .then((userData) => {
+          setUser(userData);
+          setToken(savedToken);
+        })
+        .catch(() => {
+          // Token expired or server unreachable
+          setUser(null);
+          setToken(null);
+        });
+    }
+  }, []);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -56,6 +94,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, []);
+
+  const login = async (payload: LoginPayload) => {
+    try {
+      const res = await loginUser(payload);
+      setUser(res.user);
+      setToken(res.access_token);
+      setAuthModalOpen(false);
+    } catch (err: any) {
+      throw new Error(err?.message || "Failed to log in");
+    }
+  };
+
+  const register = async (payload: RegisterPayload) => {
+    try {
+      const res = await registerUser(payload);
+      setUser(res.user);
+      setToken(res.access_token);
+      setAuthModalOpen(false);
+    } catch (err: any) {
+      throw new Error(err?.message || "Failed to register account");
+    }
+  };
+
+  const logout = async () => {
+    await logoutUser();
+    setUser(null);
+    setToken(null);
+  };
 
   const toggleFavorite = (bookId: string) => {
     setFavorites((prev) => {
@@ -153,6 +219,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         highlights,
         bookmarks,
         favorites,
+        user,
+        token,
+        authModalOpen,
+        setAuthModalOpen,
         isLoading,
         isImporting,
         errorMessage,
@@ -165,6 +235,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteBookById,
         toggleFavorite,
         isFavorite,
+        login,
+        register,
+        logout,
         setErrorMessage,
       }}
     >

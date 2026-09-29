@@ -4,6 +4,7 @@ import React from "react";
 import { AppProvider, useApp } from "../context/AppContext";
 import Sidebar from "./sidebar/sidebar";
 import Reader from "./Reader";
+import AuthModal from "./AuthModal";
 
 function InnerShell({ children }: { children: React.ReactNode }) {
   const { activeReadingBook, initialChapterIndex, closeReader, errorMessage, setErrorMessage } = useApp();
@@ -27,6 +28,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         )}
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
+
+      {/* Global Authentication Modal */}
+      <AuthModal />
 
       {/* Live Reader Fullscreen Overlay */}
       {activeReadingBook && (

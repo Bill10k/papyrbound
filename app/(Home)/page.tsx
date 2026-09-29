@@ -149,7 +149,7 @@ const INITIAL_CLUBS: BookClub[] = [
 
 export default function Home() {
   const [hover, setHover] = useState(false);
-  const { books, openBook, importNewBook, isImporting } = useApp();
+  const { books, openBook, importNewBook, isImporting, user, setAuthModalOpen } = useApp();
 
   // Social & Community State
   const [discussions, setDiscussions] = useState<DiscussionComment[]>(INITIAL_DISCUSSIONS);
@@ -159,10 +159,6 @@ export default function Home() {
   const [newCommentText, setNewCommentText] = useState("");
   const [isSpoilerChecked, setIsSpoilerChecked] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "my-reads" | "clubs">("all");
-  
-  // Google / Online Account Mock State
-  const [isConnectedGoogle, setIsConnectedGoogle] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   const heroBook = books.length > 0 ? books[0] : null;
 
@@ -210,8 +206,8 @@ export default function Home() {
       chapterTitle: heroBook
         ? `Chapter ${heroBook.current_chapter + 1}`
         : "General Reading Note",
-      userName: isConnectedGoogle ? "Bill (You)" : "Reader (You)",
-      userHandle: isConnectedGoogle ? "bill_gh" : "you",
+      userName: user ? `${user.display_name} (You)` : "Reader (Guest)",
+      userHandle: user ? user.username : "guest",
       avatarColor: "bg-mono-800",
       content: newCommentText.trim(),
       isSpoiler: isSpoilerChecked,
@@ -252,25 +248,36 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isConnectedGoogle ? (
-              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-mono-200/80 border border-[#d3c9b5] text-xs">
-                <div className="size-6 rounded-full bg-amber-700 text-mono-50 grid place-items-center font-bold text-[11px]">
-                  B
-                </div>
+            {user ? (
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-mono-200/80 hover:bg-mono-200 border border-[#d3c9b5] text-xs transition-colors cursor-pointer"
+              >
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.display_name}
+                    className="size-6 rounded-full object-cover border border-[#d3c9b5]"
+                  />
+                ) : (
+                  <div className="size-6 rounded-full bg-amber-700 text-mono-50 grid place-items-center font-bold text-[11px]">
+                    {user.display_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="text-left">
-                  <p className="font-semibold text-mono-900 leading-none">Bill</p>
+                  <p className="font-semibold text-mono-900 leading-none">{user.display_name}</p>
                   <p className="text-[10px] text-emerald-700 flex items-center gap-1 leading-none mt-0.5">
-                    <CheckCircle2 className="size-2.5" /> Google Connected
+                    <CheckCircle2 className="size-2.5" /> Connected
                   </p>
                 </div>
-              </div>
+              </button>
             ) : (
               <button
                 onClick={() => setAuthModalOpen(true)}
                 className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-mono-50 border border-[#d3c9b5] text-mono-800 hover:bg-mono-200/60 transition-all shadow-xs cursor-pointer"
               >
                 <Globe className="size-3.5 text-mono-600" />
-                Connect Google Account
+                Sign In / Connect Account
               </button>
             )}
 
@@ -717,87 +724,6 @@ export default function Home() {
         </div>
 
       </div>
-
-      {/* Google Authentication Modal */}
-      <AnimatePresence>
-        {authModalOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setAuthModalOpen(false)}
-              className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-sm rounded-2xl border border-[#d3c9b5] bg-mono-50 p-6 shadow-2xl space-y-5"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-serif font-bold text-mono-900">
-                    Welcome to Papyrbound
-                  </h3>
-                  <p className="text-xs text-mono-500 mt-0.5">
-                    Sync your library and join chapter discussions.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setAuthModalOpen(false)}
-                  className="size-7 rounded-full bg-mono-200 text-mono-600 grid place-items-center hover:bg-mono-300"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setIsConnectedGoogle(true);
-                    setAuthModalOpen(false);
-                  }}
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl border border-[#d3c9b5] bg-white hover:bg-mono-100 text-mono-900 text-xs font-semibold shadow-xs transition-all cursor-pointer"
-                >
-                  <svg className="size-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  Continue with Google
-                </button>
-
-                <div className="relative text-center">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-[#d3c9b5]" />
-                  </div>
-                  <span className="relative bg-mono-50 px-2 text-[10px] text-mono-400 font-mono">
-                    OFFLINE FIRST
-                  </span>
-                </div>
-
-                <p className="text-[11px] text-mono-500 text-center leading-relaxed">
-                  Your local books and reading settings always remain securely on your computer in SQLite.
-                </p>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </main>
   );
 }
