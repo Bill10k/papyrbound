@@ -57,9 +57,12 @@ export default function AuthModal() {
     }
   };
 
+  const [oauthWaiting, setOauthWaiting] = useState(false);
+
   const handleGoogleOAuth = async () => {
     setError(null);
     setIsLoading(true);
+    setOauthWaiting(true);
     try {
       // 1. Initialize Google OAuth flow from backend to retrieve authorization URL & unique state
       const data = await initGoogleOAuth();
@@ -67,26 +70,38 @@ export default function AuthModal() {
         throw new Error("Invalid response from authorization server.");
       }
 
-      // 2. Open Google Consent Screen in a popup window
-      const width = 520;
-      const height = 680;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      const popup = window.open(
-        data.redirect_url,
-        "papyrbound_google_auth",
-        `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`
-      );
+      // Store pending state for window focus triggers
+      try {
+        sessionStorage.setItem("papyrbound_oauth_pending_state", data.state);
+        localStorage.setItem("papyrbound_oauth_pending_state", data.state);
+      } catch {}
 
-      if (!popup || popup.closed || typeof popup.closed === "undefined") {
-        // If popup was blocked by browser, redirect current window
-        window.location.href = data.redirect_url;
-        return;
+      // 2. Open Google Consent Screen in external browser / popup
+      let openedExternally = false;
+      try {
+        const { openUrl } = await import("@tauri-apps/plugin-opener");
+        await openUrl(data.redirect_url);
+        openedExternally = true;
+      } catch {
+        // Fallback for standard browser
       }
 
-      // 3. Setup active polling loop for desktop authentication handoff
+      let popup: Window | null = null;
+      if (!openedExternally) {
+        const width = 520;
+        const height = 680;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        popup = window.open(
+          data.redirect_url,
+          "papyrbound_google_auth",
+          `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`
+        );
+      }
+
+      // 3. Resilient polling loop for desktop authentication handoff (runs for up to 3 minutes)
       let pollCount = 0;
-      const maxPolls = 180; // 3 minutes timeout
+      const maxPolls = 150; // 3 minutes with 1.2s intervals
       const pollInterval = setInterval(async () => {
         pollCount++;
         try {
@@ -94,35 +109,32 @@ export default function AuthModal() {
           if (statusRes.authenticated && statusRes.token) {
             clearInterval(pollInterval);
             try {
+              sessionStorage.removeItem("papyrbound_oauth_pending_state");
+              localStorage.removeItem("papyrbound_oauth_pending_state");
               if (popup && !popup.closed) {
                 popup.close();
               }
             } catch {}
             setAuthSession(statusRes.token.user, statusRes.token.access_token);
             setIsLoading(false);
+            setOauthWaiting(false);
+            setAuthModalOpen(false);
             return;
           }
         } catch {
           // ignore transient poll network hiccups
         }
 
-        // Check if popup was closed or timeout reached
-        if ((!popup || popup.closed) || pollCount >= maxPolls) {
-          setTimeout(async () => {
-            try {
-              const finalCheck = await checkGoogleAuthStatus(data.state);
-              if (finalCheck.authenticated && finalCheck.token) {
-                setAuthSession(finalCheck.token.user, finalCheck.token.access_token);
-              }
-            } catch {}
-            clearInterval(pollInterval);
-            setIsLoading(false);
-          }, 1000);
+        if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          setIsLoading(false);
+          setOauthWaiting(false);
         }
-      }, 1000);
+      }, 1200);
     } catch (err: any) {
       setError(err?.message || "Google authentication failed.");
       setIsLoading(false);
+      setOauthWaiting(false);
     }
   };
 

@@ -21,6 +21,7 @@ import {
   getStoredToken,
   getStoredUser,
   saveAuthSession,
+  checkGoogleAuthStatus,
 } from "../lib/auth-api";
 import type { BookDetails, Bookmark, BookSummary, Highlight } from "../types/epub";
 
@@ -124,7 +125,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Listen for OAuth messages (from popup window) and storage events
+  // Listen for OAuth messages (from popup window), storage events, and window focus
   useEffect(() => {
     const handleAuthMessage = (event: MessageEvent) => {
       if (event.data?.type === "PAPYRBOUND_AUTH_SUCCESS") {
@@ -160,13 +161,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const handleFocus = async () => {
+      try {
+        const pendingState =
+          sessionStorage.getItem("papyrbound_oauth_pending_state") ||
+          localStorage.getItem("papyrbound_oauth_pending_state");
+        if (pendingState) {
+          const res = await checkGoogleAuthStatus(pendingState);
+          if (res.authenticated && res.token) {
+            sessionStorage.removeItem("papyrbound_oauth_pending_state");
+            localStorage.removeItem("papyrbound_oauth_pending_state");
+            setUser(res.token.user);
+            setToken(res.token.access_token);
+            saveAuthSession(res.token);
+            setAuthModalOpen(false);
+            return;
+          }
+        }
+      } catch {}
+
+      const activeToken = getStoredToken();
+      if (activeToken && !user) {
+        try {
+          const userData = await getCurrentUser(activeToken);
+          setUser(userData);
+          setToken(activeToken);
+        } catch {}
+      }
+    };
+
     window.addEventListener("message", handleAuthMessage);
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("focus", handleFocus);
     return () => {
       window.removeEventListener("message", handleAuthMessage);
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("focus", handleFocus);
     };
-  }, []);
+  }, [user]);
 
   const setAuthSession = (userProfile: UserProfile, authToken: string) => {
     setUser(userProfile);

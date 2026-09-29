@@ -70,7 +70,7 @@ async def get_oauth_status(
     Polling endpoint for desktop/webview clients to retrieve OAuth completion session.
     """
     if state in PENDING_OAUTH_SESSIONS and PENDING_OAUTH_SESSIONS[state] is not None:
-        token_data = PENDING_OAUTH_SESSIONS.pop(state)
+        token_data = PENDING_OAUTH_SESSIONS[state]
         return {"authenticated": True, "token": token_data}
     return {"authenticated": False}
 
@@ -166,12 +166,16 @@ async def google_oauth_callback(
         PENDING_OAUTH_SESSIONS[state] = token_obj
 
     user_json = token_obj.user.model_dump_json()
+    redirect_web_url = f"http://localhost:3000?auth_token={token_obj.access_token}"
+    deep_link_url = f"papyrbound://auth?auth_token={token_obj.access_token}"
 
     return HTMLResponse(
         content=f"""
         <!DOCTYPE html>
         <html>
         <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>Papyrbound - Sign In Successful</title>
             <style>
                 body {{
@@ -183,38 +187,61 @@ async def google_oauth_callback(
                     justify-content: center;
                     min-height: 100vh;
                     margin: 0;
+                    padding: 20px;
+                    box-sizing: border-box;
                 }}
                 .card {{
                     background: #ffffff;
                     border: 1px solid #d3c9b5;
-                    border-radius: 16px;
-                    padding: 36px;
-                    max-width: 400px;
+                    border-radius: 20px;
+                    padding: 40px 32px;
+                    max-width: 420px;
+                    width: 100%;
                     text-align: center;
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+                    box-shadow: 0 12px 30px rgba(0,0,0,0.06);
                 }}
                 .avatar {{
-                    width: 64px;
-                    height: 64px;
+                    width: 68px;
+                    height: 68px;
                     border-radius: 50%;
                     margin: 0 auto 16px;
                     background: #b45309;
                     color: #fff;
                     display: grid;
                     place-items: center;
-                    font-size: 24px;
+                    font-size: 26px;
                     font-weight: bold;
+                    box-shadow: 0 4px 12px rgba(180,83,9,0.25);
                 }}
-                h2 {{ margin: 0 0 8px; font-size: 20px; }}
-                p {{ font-size: 13px; color: #666; margin: 0 0 20px; }}
+                h2 {{ margin: 0 0 8px; font-size: 22px; font-weight: 700; color: #1e1e1e; }}
+                p {{ font-size: 13px; color: #555; margin: 0 0 18px; line-height: 1.5; }}
                 .badge {{
-                    display: inline-block;
-                    padding: 4px 12px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 5px 14px;
                     border-radius: 9999px;
                     background: #d1fae5;
                     color: #065f46;
-                    font-size: 11px;
+                    font-size: 12px;
                     font-weight: 600;
+                    margin-bottom: 24px;
+                }}
+                .btn {{
+                    display: inline-block;
+                    width: 100%;
+                    padding: 12px 20px;
+                    background: #1e1e1e;
+                    color: #ffffff !important;
+                    text-decoration: none;
+                    border-radius: 12px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    box-sizing: border-box;
+                    transition: background 0.15s ease;
+                }}
+                .btn:hover {{
+                    background: #333333;
                 }}
             </style>
         </head>
@@ -224,11 +251,14 @@ async def google_oauth_callback(
                 <h2>Welcome, {token_obj.user.display_name}!</h2>
                 <p>Google account connected successfully to Papyrbound.</p>
                 <div class="badge">Authenticated ✓</div>
+                <a href="{redirect_web_url}" class="btn">Open Papyrbound & Return to App</a>
             </div>
 
             <script>
                 const token = "{token_obj.access_token}";
                 const user = {user_json};
+                const webUrl = "{redirect_web_url}";
+                const deepLink = "{deep_link_url}";
 
                 // Store in browser localStorage
                 try {{
@@ -238,22 +268,29 @@ async def google_oauth_callback(
                     localStorage.setItem("papyrbound_user", JSON.stringify(user));
                 }} catch(e) {{}}
 
-                // Notify desktop application if opened via window.open
+                // 1. Notify desktop application if opened via window.open
                 if (window.opener) {{
-                    window.opener.postMessage({{
-                        type: "PAPYRBOUND_AUTH_SUCCESS",
-                        token: token,
-                        user: user
-                    }}, "*");
+                    try {{
+                        window.opener.postMessage({{
+                            type: "PAPYRBOUND_AUTH_SUCCESS",
+                            token: token,
+                            user: user
+                        }}, "*");
+                    }} catch(e) {{}}
                     setTimeout(() => {{
-                        window.close();
+                        try {{ window.close(); }} catch(e) {{}}
                     }}, 1200);
-                }} else {{
-                    // Direct navigation fallback to main web/desktop app
-                    setTimeout(() => {{
-                        window.location.href = "http://localhost:3000";
-                    }}, 1500);
                 }}
+
+                // 2. Attempt custom deep link protocol
+                try {{
+                    window.location.href = deepLink;
+                }} catch(e) {{}}
+
+                // 3. Auto-redirect browser tab to frontend with auth token
+                setTimeout(() => {{
+                    window.location.href = webUrl;
+                }}, 1500);
             </script>
         </body>
         </html>
