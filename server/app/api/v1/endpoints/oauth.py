@@ -145,7 +145,7 @@ async def google_oauth_callback(
         avatar_url=userinfo.get("picture")
     )
 
-    user_json = json.dumps(token_obj.user.model_dump())
+    user_json = token_obj.user.model_dump_json()
 
     return HTMLResponse(
         content=f"""
