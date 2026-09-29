@@ -238,6 +238,8 @@ async def google_oauth_callback(
                     font-size: 13px;
                     font-weight: 600;
                     box-sizing: border-box;
+                    border: none;
+                    cursor: pointer;
                     transition: background 0.15s ease;
                 }}
                 .btn:hover {{
@@ -249,24 +251,15 @@ async def google_oauth_callback(
             <div class="card">
                 <div class="avatar">{token_obj.user.display_name[:1].upper()}</div>
                 <h2>Welcome, {token_obj.user.display_name}!</h2>
-                <p>Google account connected successfully to Papyrbound.</p>
+                <p>You have signed in successfully. Return to the Papyrbound desktop app to continue reading.</p>
                 <div class="badge">Authenticated ✓</div>
-                <a href="{redirect_web_url}" class="btn">Open Papyrbound & Return to App</a>
+                <button onclick="window.close()" class="btn">Close Tab</button>
             </div>
 
             <script>
                 const token = "{token_obj.access_token}";
                 const user = {user_json};
-                const webUrl = "{redirect_web_url}";
                 const deepLink = "{deep_link_url}";
-
-                // Store in browser localStorage
-                try {{
-                    localStorage.setItem("papyrbound_access_token", token);
-                    localStorage.setItem("papyrbound_user_profile", JSON.stringify(user));
-                    localStorage.setItem("papyrbound_token", token);
-                    localStorage.setItem("papyrbound_user", JSON.stringify(user));
-                }} catch(e) {{}}
 
                 // 1. Notify desktop application if opened via window.open
                 if (window.opener) {{
@@ -279,17 +272,19 @@ async def google_oauth_callback(
                     }} catch(e) {{}}
                     setTimeout(() => {{
                         try {{ window.close(); }} catch(e) {{}}
-                    }}, 1200);
+                    }}, 1000);
                 }}
 
-                // 2. Attempt custom deep link protocol
+                // 2. Attempt custom desktop protocol
                 try {{
                     window.location.href = deepLink;
                 }} catch(e) {{}}
 
-                // 3. Auto-redirect browser tab to frontend with auth token
+                // 3. Automatically close this browser tab
                 setTimeout(() => {{
-                    window.location.href = webUrl;
+                    try {{
+                        window.close();
+                    }} catch(e) {{}}
                 }}, 1500);
             </script>
         </body>
