@@ -61,13 +61,38 @@ export default function AuthModal() {
     setError(null);
     setIsLoading(true);
     try {
-      // In development mode, exchange mock or real OAuth
-      const mockVerifier = "papyrbound_desktop_pkce_verifier_" + Math.random().toString(36).substring(7);
-      await exchangeGoogleCode("dev_auth_code_google_user", mockVerifier);
-      window.location.reload();
+      // 1. Initialize Google OAuth flow from backend to retrieve authorization URL
+      const data = await initGoogleOAuth();
+      if (!data.redirect_url) {
+        throw new Error("Invalid response from authorization server.");
+      }
+
+      // 2. Open Google Consent Screen in a popup window
+      const width = 520;
+      const height = 680;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      const popup = window.open(
+        data.redirect_url,
+        "papyrbound_google_auth",
+        `width=${width},height=${height},left=${left},top=${top},status=no,menubar=no,toolbar=no`
+      );
+
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        // If popup was blocked by browser, redirect current window
+        window.location.href = data.redirect_url;
+        return;
+      }
+
+      // 3. Setup polling monitor for popup closure
+      const checkPopupInterval = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(checkPopupInterval);
+          setIsLoading(false);
+        }
+      }, 1000);
     } catch (err: any) {
       setError(err?.message || "Google authentication failed.");
-    } finally {
       setIsLoading(false);
     }
   };

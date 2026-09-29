@@ -90,14 +90,15 @@ export async function getCurrentUser(token?: string): Promise<UserProfile> {
   return response.json();
 }
 
-export async function initGoogleOAuth(codeChallenge: string): Promise<{
+export async function initGoogleOAuth(codeChallenge?: string): Promise<{
   redirect_url: string;
   state: string;
   code_challenge: string;
 }> {
-  const response = await fetch(
-    `${API_BASE_URL}/auth/google/init?code_challenge=${encodeURIComponent(codeChallenge)}`
-  );
+  const url = codeChallenge
+    ? `${API_BASE_URL}/auth/google/init?code_challenge=${encodeURIComponent(codeChallenge)}`
+    : `${API_BASE_URL}/auth/google/init`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to initialize Google OAuth");
   }

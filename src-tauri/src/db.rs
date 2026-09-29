@@ -1,6 +1,6 @@
 use crate::models::{
-    BookDetails, BookProgressStat, BookSettings, BookSummary, Bookmark, DailyActivity,
-    Highlight, HourlyActivity, ReadingInsights, ReadingProgress, ReadingSession, TocItem,
+    BookDetails, BookProgressStat, BookSettings, BookSummary, Bookmark, DailyActivity, Highlight,
+    HourlyActivity, ReadingInsights, ReadingProgress, ReadingSession, TocItem,
 };
 use chrono::Utc;
 use rusqlite::{params, Connection, Result};
@@ -347,7 +347,11 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_highlights(&self, book_id: &str, chapter_index: Option<usize>) -> Result<Vec<Highlight>> {
+    pub fn get_highlights(
+        &self,
+        book_id: &str,
+        chapter_index: Option<usize>,
+    ) -> Result<Vec<Highlight>> {
         let conn = self.conn.lock().unwrap();
         let mut highlights = Vec::new();
 
@@ -406,7 +410,10 @@ impl Database {
 
     pub fn delete_highlight(&self, highlight_id: &str) -> Result<bool> {
         let conn = self.conn.lock().unwrap();
-        let rows = conn.execute("DELETE FROM highlights WHERE id = ?1", params![highlight_id])?;
+        let rows = conn.execute(
+            "DELETE FROM highlights WHERE id = ?1",
+            params![highlight_id],
+        )?;
         Ok(rows > 0)
     }
 
@@ -420,9 +427,8 @@ impl Database {
     ) -> Result<bool> {
         let conn = self.conn.lock().unwrap();
         // Check if bookmark exists for this chapter
-        let mut stmt = conn.prepare(
-            "SELECT id FROM bookmarks WHERE book_id = ?1 AND chapter_index = ?2",
-        )?;
+        let mut stmt =
+            conn.prepare("SELECT id FROM bookmarks WHERE book_id = ?1 AND chapter_index = ?2")?;
         let mut rows = stmt.query(params![book_id, chapter_index as i64])?;
 
         if let Some(row) = rows.next()? {
@@ -636,17 +642,17 @@ impl Database {
         let conn = self.conn.lock().unwrap();
 
         // 1. Overall stats
-        let total_reading_seconds: i64 = conn.query_row(
-            "SELECT COALESCE(SUM(duration_seconds), 0) FROM reading_sessions",
-            [],
-            |r| r.get(0),
-        ).unwrap_or(0);
+        let total_reading_seconds: i64 = conn
+            .query_row(
+                "SELECT COALESCE(SUM(duration_seconds), 0) FROM reading_sessions",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap_or(0);
 
-        let total_sessions: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM reading_sessions",
-            [],
-            |r| r.get(0),
-        ).unwrap_or(0);
+        let total_sessions: i64 = conn
+            .query_row("SELECT COUNT(*) FROM reading_sessions", [], |r| r.get(0))
+            .unwrap_or(0);
 
         let today_reading_seconds: i64 = conn.query_row(
             "SELECT COALESCE(SUM(duration_seconds), 0) FROM reading_sessions WHERE date(start_time) = date('now')",
@@ -727,7 +733,9 @@ impl Database {
 
             if !days.is_empty() {
                 let today_str = Utc::now().format("%Y-%m-%d").to_string();
-                let yesterday_str = (Utc::now() - chrono::Duration::days(1)).format("%Y-%m-%d").to_string();
+                let yesterday_str = (Utc::now() - chrono::Duration::days(1))
+                    .format("%Y-%m-%d")
+                    .to_string();
 
                 if days[0] == today_str || days[0] == yesterday_str {
                     let mut check_date = if days[0] == today_str {
@@ -772,7 +780,8 @@ impl Database {
                 let curr_ch: usize = row.get(5)?;
                 let prog: f64 = row.get(6)?;
                 let total_sec: i64 = row.get(7)?;
-                let is_completed = prog >= 99.0 || (total_ch > 0 && curr_ch + 1 >= total_ch && prog >= 80.0);
+                let is_completed =
+                    prog >= 99.0 || (total_ch > 0 && curr_ch + 1 >= total_ch && prog >= 80.0);
 
                 Ok(BookProgressStat {
                     book_id: row.get(0)?,
@@ -811,4 +820,3 @@ impl Database {
         })
     }
 }
-

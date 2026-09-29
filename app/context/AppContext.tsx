@@ -20,6 +20,7 @@ import {
   getCurrentUser,
   getStoredToken,
   getStoredUser,
+  saveAuthSession,
 } from "../lib/auth-api";
 import type { BookDetails, Bookmark, BookSummary, Highlight } from "../types/epub";
 
@@ -48,6 +49,7 @@ interface AppContextType {
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
+  setAuthSession: (userProfile: UserProfile, authToken: string) => void;
   setErrorMessage: (msg: string | null) => void;
 }
 
@@ -102,6 +104,62 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, []);
+
+  // Listen for OAuth messages (from popup window) and storage events
+  useEffect(() => {
+    const handleAuthMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PAPYRBOUND_AUTH_SUCCESS") {
+        const { token: receivedToken, user: receivedUser } = event.data;
+        if (receivedToken && receivedUser) {
+          setUser(receivedUser);
+          setToken(receivedToken);
+          saveAuthSession({
+            access_token: receivedToken,
+            token_type: "bearer",
+            expires_in: 86400,
+            user: receivedUser,
+          });
+          setAuthModalOpen(false);
+        }
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (
+        event.key === "papyrbound_access_token" ||
+        event.key === "papyrbound_user_profile" ||
+        event.key === "papyrbound_token" ||
+        event.key === "papyrbound_user"
+      ) {
+        const storedToken = getStoredToken();
+        const storedUser = getStoredUser();
+        if (storedToken && storedUser) {
+          setUser(storedUser);
+          setToken(storedToken);
+          setAuthModalOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener("message", handleAuthMessage);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("message", handleAuthMessage);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  const setAuthSession = (userProfile: UserProfile, authToken: string) => {
+    setUser(userProfile);
+    setToken(authToken);
+    saveAuthSession({
+      access_token: authToken,
+      token_type: "bearer",
+      expires_in: 86400,
+      user: userProfile,
+    });
+    setAuthModalOpen(false);
+  };
 
   const login = async (payload: LoginPayload) => {
     try {
@@ -247,6 +305,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        setAuthSession,
         setErrorMessage,
       }}
     >

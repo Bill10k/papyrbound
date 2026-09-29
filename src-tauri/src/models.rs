@@ -148,4 +148,3 @@ pub struct ReadingInsights {
     pub daily_history: Vec<DailyActivity>,
     pub book_stats: Vec<BookProgressStat>,
 }
-

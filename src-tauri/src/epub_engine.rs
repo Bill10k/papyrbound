@@ -19,7 +19,13 @@ impl EpubEngine {
         let title = doc
             .mdata("title")
             .map(|m| m.value.clone())
-            .unwrap_or_else(|| path_ref.file_stem().unwrap_or_default().to_string_lossy().to_string());
+            .unwrap_or_else(|| {
+                path_ref
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string()
+            });
 
         let author = doc.mdata("creator").map(|m| m.value.clone());
         let publisher = doc.mdata("publisher").map(|m| m.value.clone());
@@ -75,7 +81,8 @@ impl EpubEngine {
         book_id: &str,
         chapter_index: usize,
     ) -> Result<ChapterContent, String> {
-        let mut doc = EpubDoc::new(path.as_ref()).map_err(|e| format!("Failed to open EPUB: {e}"))?;
+        let mut doc =
+            EpubDoc::new(path.as_ref()).map_err(|e| format!("Failed to open EPUB: {e}"))?;
 
         let total_chapters = doc.spine.len();
         if chapter_index >= total_chapters {
@@ -96,7 +103,8 @@ impl EpubEngine {
 
         let raw_title = doc.spine.get(chapter_index).map(|s| s.idref.clone());
 
-        let (sanitized_html, extracted_title) = Self::sanitize_chapter_html(&raw_html, raw_title.as_deref(), chapter_index);
+        let (sanitized_html, extracted_title) =
+            Self::sanitize_chapter_html(&raw_html, raw_title.as_deref(), chapter_index);
 
         let final_title = extracted_title.or(raw_title);
 
@@ -143,22 +151,30 @@ impl EpubEngine {
         }
 
         // 4. Strip raw structural ID headers (e.g. <h1>ID142</h1>, <h2 id="x_id">ID142</h2>, <div>ID142</div>)
-        if let Ok(re_raw_header_ids) = Regex::new(r"(?is)<h[1-6][^>]*>\s*(?:ID\d+|id\d+|pgepubid\d+|x_id\d+|chapter_\d+|section_\d+|item\d+)\s*</h[1-6]>") {
+        if let Ok(re_raw_header_ids) = Regex::new(
+            r"(?is)<h[1-6][^>]*>\s*(?:ID\d+|id\d+|pgepubid\d+|x_id\d+|chapter_\d+|section_\d+|item\d+)\s*</h[1-6]>",
+        ) {
             html = re_raw_header_ids.replace_all(&html, "").to_string();
         }
 
         // 5. Strip raw bracketed or standalone ID paragraphs: e.g. <p class="... font-mono">[ID142]</p> or <p>ID142</p>
-        if let Ok(re_id_p) = Regex::new(r"(?is)<p[^>]*>\s*(?:\[?\s*(?:ID\d+|id\d+|pgepubid\d+|x_id\d+)\s*\]?)\s*</p>") {
+        if let Ok(re_id_p) = Regex::new(
+            r"(?is)<p[^>]*>\s*(?:\[?\s*(?:ID\d+|id\d+|pgepubid\d+|x_id\d+)\s*\]?)\s*</p>",
+        ) {
             html = re_id_p.replace_all(&html, "").to_string();
         }
 
         // 6. Strip empty anchor structural markers e.g. <a id="ID142"></a>
-        if let Ok(re_anchor_ids) = Regex::new(r#"(?is)<a\s+id=["'](?:ID\d+|id\d+|pgepubid\d+|x_id\d+)["'][^>]*>\s*</a>"#) {
+        if let Ok(re_anchor_ids) =
+            Regex::new(r#"(?is)<a\s+id=["'](?:ID\d+|id\d+|pgepubid\d+|x_id\d+)["'][^>]*>\s*</a>"#)
+        {
             html = re_anchor_ids.replace_all(&html, "").to_string();
         }
 
         // 7. Strip empty span ID markers e.g. <span id="ID142"></span>
-        if let Ok(re_span_ids) = Regex::new(r#"(?is)<span\s+id=["'](?:ID\d+|id\d+|pgepubid\d+|x_id\d+)["'][^>]*>\s*</span>"#) {
+        if let Ok(re_span_ids) = Regex::new(
+            r#"(?is)<span\s+id=["'](?:ID\d+|id\d+|pgepubid\d+|x_id\d+)["'][^>]*>\s*</span>"#,
+        ) {
             html = re_span_ids.replace_all(&html, "").to_string();
         }
 
@@ -169,10 +185,15 @@ impl EpubEngine {
 
         // 9. Extract an intuitive chapter title if current spine title is raw ID (e.g. "id142", "item15")
         let mut extracted_title = None;
-        let is_spine_raw = spine_id.map(|id| {
-            let lower = id.to_lowercase();
-            lower.starts_with("id") || lower.starts_with("item") || lower.starts_with("x_") || lower.starts_with("pgepub")
-        }).unwrap_or(true);
+        let is_spine_raw = spine_id
+            .map(|id| {
+                let lower = id.to_lowercase();
+                lower.starts_with("id")
+                    || lower.starts_with("item")
+                    || lower.starts_with("x_")
+                    || lower.starts_with("pgepub")
+            })
+            .unwrap_or(true);
 
         if is_spine_raw {
             // Check for real heading text in first <h1> or <h2>
@@ -202,7 +223,8 @@ impl EpubEngine {
         path: P,
         resource_id_or_path: &str,
     ) -> Result<ResourceData, String> {
-        let mut doc = EpubDoc::new(path.as_ref()).map_err(|e| format!("Failed to open EPUB: {e}"))?;
+        let mut doc =
+            EpubDoc::new(path.as_ref()).map_err(|e| format!("Failed to open EPUB: {e}"))?;
 
         let (data, mime_type) = if let Some(res) = doc.get_resource(resource_id_or_path) {
             res
@@ -252,4 +274,3 @@ impl EpubEngine {
         }
     }
 }
-

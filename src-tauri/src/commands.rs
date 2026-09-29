@@ -105,10 +105,7 @@ pub async fn get_reading_progress(
 }
 
 #[tauri::command]
-pub async fn delete_book(
-    db: State<'_, Database>,
-    book_id: String,
-) -> Result<bool, String> {
+pub async fn delete_book(db: State<'_, Database>, book_id: String) -> Result<bool, String> {
     db.delete_book(&book_id)
         .map_err(|e| format!("Failed to delete book: {e}"))
 }
@@ -193,10 +190,7 @@ pub async fn get_all_bookmarks(db: State<'_, Database>) -> Result<Vec<Bookmark>,
 }
 
 #[tauri::command]
-pub async fn delete_bookmark(
-    db: State<'_, Database>,
-    bookmark_id: String,
-) -> Result<bool, String> {
+pub async fn delete_bookmark(db: State<'_, Database>, bookmark_id: String) -> Result<bool, String> {
     db.delete_bookmark(&bookmark_id)
         .map_err(|e| format!("Failed to delete bookmark: {e}"))
 }
@@ -229,10 +223,7 @@ pub async fn record_reading_session(
 }
 
 #[tauri::command]
-pub async fn get_reading_insights(
-    db: State<'_, Database>,
-) -> Result<ReadingInsights, String> {
+pub async fn get_reading_insights(db: State<'_, Database>) -> Result<ReadingInsights, String> {
     db.get_reading_insights()
         .map_err(|e| format!("Failed to compute reading insights: {e}"))
 }
-

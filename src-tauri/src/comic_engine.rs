@@ -21,11 +21,14 @@ impl ComicEngine {
         let path_str = path_ref.to_string_lossy().to_string();
 
         let file = File::open(path_ref).map_err(|e| format!("Failed to open comic file: {e}"))?;
-        let mut archive = ZipArchive::new(file).map_err(|e| format!("Failed to read comic ZIP archive: {e}"))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Failed to read comic ZIP archive: {e}"))?;
 
         let mut image_names: Vec<String> = Vec::new();
         for i in 0..archive.len() {
-            let entry = archive.by_index(i).map_err(|e| format!("ZIP entry error: {e}"))?;
+            let entry = archive
+                .by_index(i)
+                .map_err(|e| format!("ZIP entry error: {e}"))?;
             let name = entry.name().to_string();
             if Self::is_image_filename(&name) && !name.starts_with("__MACOSX") {
                 image_names.push(name);
@@ -80,7 +83,10 @@ impl ComicEngine {
             title: file_stem,
             author: Some("Comic / Manga".to_string()),
             publisher: None,
-            description: Some(format!("Comic book archive containing {} illustrated pages.", total_pages)),
+            description: Some(format!(
+                "Comic book archive containing {} illustrated pages.",
+                total_pages
+            )),
             language: None,
             identifier: None,
             cover_image,
@@ -96,12 +102,16 @@ impl ComicEngine {
         book_id: &str,
         page_index: usize,
     ) -> Result<ChapterContent, String> {
-        let file = File::open(path.as_ref()).map_err(|e| format!("Failed to open comic file: {e}"))?;
-        let mut archive = ZipArchive::new(file).map_err(|e| format!("Failed to read ZIP archive: {e}"))?;
+        let file =
+            File::open(path.as_ref()).map_err(|e| format!("Failed to open comic file: {e}"))?;
+        let mut archive =
+            ZipArchive::new(file).map_err(|e| format!("Failed to read ZIP archive: {e}"))?;
 
         let mut image_names: Vec<String> = Vec::new();
         for i in 0..archive.len() {
-            let entry = archive.by_index(i).map_err(|e| format!("ZIP entry error: {e}"))?;
+            let entry = archive
+                .by_index(i)
+                .map_err(|e| format!("ZIP entry error: {e}"))?;
             let name = entry.name().to_string();
             if Self::is_image_filename(&name) && !name.starts_with("__MACOSX") {
                 image_names.push(name);
@@ -112,7 +122,10 @@ impl ComicEngine {
 
         let total_pages = image_names.len();
         if page_index >= total_pages {
-            return Err(format!("Page index {} out of range (total: {})", page_index, total_pages));
+            return Err(format!(
+                "Page index {} out of range (total: {})",
+                page_index, total_pages
+            ));
         }
 
         let target_name = &image_names[page_index];

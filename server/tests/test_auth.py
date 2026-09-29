@@ -54,3 +54,27 @@ async def test_user_registration_and_login(client: AsyncClient):
         json={"username_or_email": "bill@example.com", "password": "wrongpassword"}
     )
     assert bad_login.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_google_oauth_init_and_exchange(client: AsyncClient):
+    # 1. Test /auth/google/init endpoint
+    init_res = await client.get("/api/v1/auth/google/init")
+    assert init_res.status_code == 200
+    init_data = init_res.json()
+    assert "redirect_url" in init_data
+    assert "accounts.google.com" in init_data["redirect_url"]
+    assert "openid" in init_data["redirect_url"]
+    assert "state" in init_data
+
+    # 2. Test /auth/google/exchange endpoint with dev code
+    exchange_res = await client.post(
+        "/api/v1/auth/google/exchange",
+        json={"code": "dev_test_oauth_code_123", "code_verifier": "test_verifier"}
+    )
+    assert exchange_res.status_code == 200
+    auth_data = exchange_res.json()
+    assert "access_token" in auth_data
+    assert "user" in auth_data
+    assert "google" in auth_data["user"]["connected_providers"]
+
