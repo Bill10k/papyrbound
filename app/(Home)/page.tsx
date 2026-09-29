@@ -26,8 +26,15 @@ import Link from "next/link";
 import BookCover from "@/app/components/book-cover";
 import { useApp } from "../context/AppContext";
 import { fetchClubs, joinClub, leaveClub, BookClub as ApiBookClub } from "@/app/lib/clubs-api";
+import {
+  fetchDiscussions,
+  createDiscussion,
+  toggleDiscussionLike,
+  DiscussionComment as ApiDiscussionComment,
+} from "@/app/lib/discussions-api";
 import ClubRoomModal from "@/app/components/clubs/ClubRoomModal";
 import CreateClubModal from "@/app/components/clubs/CreateClubModal";
+
 
 
 interface DiscussionComment {
@@ -157,7 +164,8 @@ export default function Home() {
   const { books, openBook, importNewBook, isImporting, user, setAuthModalOpen } = useApp();
 
   // Social & Community State
-  const [discussions, setDiscussions] = useState<DiscussionComment[]>(INITIAL_DISCUSSIONS);
+  const [discussions, setDiscussions] = useState<ApiDiscussionComment[]>([]);
+  const [loadingDiscussions, setLoadingDiscussions] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<string, boolean>>({});
   const [liveClubs, setLiveClubs] = useState<ApiBookClub[]>([]);
   const [loadingClubs, setLoadingClubs] = useState(false);
@@ -172,6 +180,7 @@ export default function Home() {
 
   useEffect(() => {
     loadClubs();
+    loadDiscussions();
   }, [user]);
 
   const loadClubs = async () => {
@@ -188,22 +197,46 @@ export default function Home() {
     }
   };
 
+  const loadDiscussions = async () => {
+    setLoadingDiscussions(true);
+    try {
+      const data = await fetchDiscussions();
+      if (data && data.length > 0) {
+        setDiscussions(data);
+      }
+    } catch (err) {
+      console.warn("Failed to load discussions:", err);
+    } finally {
+      setLoadingDiscussions(false);
+    }
+  };
+
   const toggleSpoiler = (id: string) => {
     setRevealedSpoilers((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const toggleLike = (id: string) => {
-    setDiscussions((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? {
-              ...d,
-              likes: d.isLiked ? d.likes - 1 : d.likes + 1,
-              isLiked: !d.isLiked,
-            }
-          : d
-      )
-    );
+  const toggleLike = async (id: string) => {
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      const res = await toggleDiscussionLike(id);
+      setDiscussions((prev) =>
+        prev.map((d) =>
+          d.id === id
+            ? {
+                ...d,
+                likes_count: res.likes_count,
+                is_liked: res.is_liked,
+              }
+            : d
+        )
+      );
+    } catch (err) {
+      console.warn("Could not toggle like:", err);
+    }
   };
 
   const handleToggleJoinClub = async (e: React.MouseEvent, club: ApiBookClub) => {
@@ -238,33 +271,35 @@ export default function Home() {
     }
   };
 
-  const handlePostComment = (e: React.FormEvent) => {
+  const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCommentText.trim()) return;
 
-    const bookTitle = activeDiscussBook || (heroBook ? heroBook.title : "Community Discussion");
-    const newComment: DiscussionComment = {
-      id: `disc-${Date.now()}`,
-      bookTitle,
-      chapterIndex: heroBook ? heroBook.current_chapter + 1 : 1,
-      chapterTitle: heroBook
-        ? `Chapter ${heroBook.current_chapter + 1}`
-        : "General Reading Note",
-      userName: user ? `${user.display_name} (You)` : "Reader (Guest)",
-      userHandle: user ? user.username : "guest",
-      avatarColor: "bg-mono-800",
-      content: newCommentText.trim(),
-      isSpoiler: isSpoilerChecked,
-      spoilerWarning: isSpoilerChecked ? "User marked this comment as a spoiler" : undefined,
-      likes: 1,
-      replies: 0,
-      timeAgo: "Just now",
-      isLiked: true,
-    };
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
 
-    setDiscussions([newComment, ...discussions]);
-    setNewCommentText("");
-    setIsSpoilerChecked(false);
+    const bookTitle = activeDiscussBook || (heroBook ? heroBook.title : "Community Discussion");
+    try {
+      const created = await createDiscussion({
+        book_title: bookTitle,
+        book_author: heroBook?.author || undefined,
+        chapter_index: heroBook ? heroBook.current_chapter : 0,
+        chapter_title: heroBook
+          ? `Chapter ${heroBook.current_chapter + 1}`
+          : "General Reading Note",
+        content: newCommentText.trim(),
+        is_spoiler: isSpoilerChecked,
+        spoiler_warning: isSpoilerChecked ? "User marked this comment as a spoiler" : undefined,
+      });
+
+      setDiscussions([created, ...discussions]);
+      setNewCommentText("");
+      setIsSpoilerChecked(false);
+    } catch (err: any) {
+      alert(err.message || "Failed to post comment");
+    }
   };
 
 
@@ -551,27 +586,35 @@ export default function Home() {
                     {/* Header */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div
-                          className={`size-7 rounded-full text-mono-50 grid place-items-center font-bold text-xs ${disc.avatarColor}`}
-                        >
-                          {disc.userName.charAt(0)}
-                        </div>
+                        {disc.user?.avatar_url ? (
+                          <img
+                            src={disc.user.avatar_url}
+                            alt={disc.user.display_name}
+                            className="size-7 rounded-full object-cover border border-[#d3c9b5]"
+                          />
+                        ) : (
+                          <div className="size-7 rounded-full bg-mono-800 text-mono-50 grid place-items-center font-bold text-xs">
+                            {(disc.user?.display_name || "R").charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs font-bold text-mono-900">
-                              {disc.userName}
+                              {disc.user?.display_name || "Community Reader"}
                             </span>
-                            <span className="text-[10px] text-mono-500">
-                              @{disc.userHandle}
+                            <span className="text-[10px] text-mono-500 font-mono">
+                              @{disc.user?.username || "reader"}
                             </span>
-                            <span className="text-[10px] text-mono-400">• {disc.timeAgo}</span>
+                            <span className="text-[10px] text-mono-400">
+                              • {new Date(disc.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                            </span>
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[10px] font-semibold text-amber-900 bg-amber-100/80 px-1.5 py-0.2 rounded">
-                              {disc.bookTitle}
+                              {disc.book_title}
                             </span>
                             <span className="text-[10px] font-mono text-mono-500">
-                              {disc.chapterTitle}
+                              {disc.chapter_title}
                             </span>
                           </div>
                         </div>
@@ -579,13 +622,13 @@ export default function Home() {
                     </div>
 
                     {/* Content & Spoiler Shield */}
-                    {disc.isSpoiler && !isRevealed ? (
+                    {disc.is_spoiler && !isRevealed ? (
                       <div className="rounded-lg border border-amber-300 bg-amber-50/80 p-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-xs text-amber-900">
                           <ShieldAlert className="size-4 text-amber-600 shrink-0" />
                           <span>
                             <strong>Spoiler Protection:</strong>{" "}
-                            {disc.spoilerWarning || "Contains content from a later chapter"}
+                            {disc.spoiler_warning || "Contains content from a later chapter"}
                           </span>
                         </div>
                         <button
@@ -601,7 +644,7 @@ export default function Home() {
                         <p className="text-xs text-mono-800 leading-relaxed">
                           {disc.content}
                         </p>
-                        {disc.isSpoiler && isRevealed && (
+                        {disc.is_spoiler && isRevealed && (
                           <button
                             onClick={() => toggleSpoiler(disc.id)}
                             className="inline-flex items-center gap-1 text-[10px] text-mono-400 hover:text-mono-600 cursor-pointer"
@@ -618,27 +661,27 @@ export default function Home() {
                         <button
                           onClick={() => toggleLike(disc.id)}
                           className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${
-                            disc.isLiked ? "text-rose-600 font-semibold" : "hover:text-mono-800"
+                            disc.is_liked ? "text-rose-600 font-semibold" : "hover:text-mono-800"
                           }`}
                         >
                           <Heart
                             className="size-3.5"
-                            fill={disc.isLiked ? "currentColor" : "none"}
+                            fill={disc.is_liked ? "currentColor" : "none"}
                           />
-                          <span>{disc.likes}</span>
+                          <span>{disc.likes_count}</span>
                         </button>
 
                         <button
-                          onClick={() => setActiveDiscussBook(disc.bookTitle)}
+                          onClick={() => setActiveDiscussBook(disc.book_title)}
                           className="flex items-center gap-1 text-xs hover:text-mono-800 transition-colors cursor-pointer"
                         >
                           <MessageSquare className="size-3.5" />
-                          <span>{disc.replies} replies</span>
+                          <span>Discuss Book</span>
                         </button>
                       </div>
 
                       <button
-                        onClick={() => setActiveDiscussBook(disc.bookTitle)}
+                        onClick={() => setActiveDiscussBook(disc.book_title)}
                         className="text-[11px] font-medium text-mono-700 hover:text-amber-800 cursor-pointer"
                       >
                         Join Thread →

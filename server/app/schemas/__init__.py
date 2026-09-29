@@ -14,6 +14,11 @@ from app.schemas.book_club import (
     ClubMessageCreate,
     ClubMessageResponse,
 )
+from app.schemas.discussion import (
+    DiscussionCreate,
+    DiscussionResponse,
+    DiscussionLikeResponse,
+)
 
 __all__ = [
     "UserRegister",
@@ -28,4 +33,7 @@ __all__ = [
     "ClubMemberResponse",
     "ClubMessageCreate",
     "ClubMessageResponse",
+    "DiscussionCreate",
+    "DiscussionResponse",
+    "DiscussionLikeResponse",
 ]

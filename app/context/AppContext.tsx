@@ -30,6 +30,7 @@ interface AppContextType {
   favorites: string[];
   user: UserProfile | null;
   token: string | null;
+  hydrated: boolean;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   isLoading: boolean;
@@ -57,8 +58,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [user, setUser] = useState<UserProfile | null>(getStoredUser());
-  const [token, setToken] = useState<string | null>(getStoredToken());
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [activeReadingBook, setActiveReadingBook] = useState<BookDetails | null>(null);
   const [initialChapterIndex, setInitialChapterIndex] = useState<number | undefined>(undefined);
@@ -68,20 +70,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Validate stored session on startup
   useEffect(() => {
+  const validateStoredSession = async () => {
     const savedToken = getStoredToken();
+
     if (savedToken) {
-      getCurrentUser(savedToken)
-        .then((userData) => {
-          setUser(userData);
-          setToken(savedToken);
-        })
-        .catch(() => {
-          // Token expired or server unreachable
-          setUser(null);
-          setToken(null);
-        });
+      try {
+        const userData = await getCurrentUser(savedToken);
+        setUser(userData);
+        setToken(savedToken);
+      } catch {
+        // Token expired or server unreachable
+        setUser(null);
+        setToken(null);
+      }
     }
-  }, []);
+
+    setHydrated(true);
+  };
+
+  validateStoredSession();
+}, []);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -221,6 +229,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         favorites,
         user,
         token,
+        hydrated,
         authModalOpen,
         setAuthModalOpen,
         isLoading,

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useApp } from "../context/AppContext";
 
 export type PageTab = "home" | "library" | "collections" | "annotations" | "insights" | "settings";
 
@@ -19,6 +20,7 @@ export default function Sidebar({
   annotationsCount,
   collectionsCount = 3,
 }: SidebarProps) {
+  const { user, hydrated, setAuthModalOpen } = useApp();
   const navItems = [
     {
       id: "home" as PageTab,
@@ -166,18 +168,45 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* User Profile Avatar / Bottom Footer */}
-      <div className="pt-4 border-t border-border/60 flex items-center justify-between px-2">
-        <div className="flex items-center gap-2.5">
-          <div className="size-7 rounded-full bg-foreground text-background font-bold text-xs grid place-items-center shadow-xs">
-            N
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[11px] font-semibold text-foreground leading-tight">Reader</span>
-            <span className="text-[9px] text-muted-foreground font-mono">Local Library</span>
-          </div>
+      {/* User Profile / Authentication */}
+<div className="pt-4 border-t border-border/60 px-2">
+  {!hydrated ? (
+    <div className="h-10 w-full rounded-lg bg-secondary/50 animate-pulse" />
+  ) : user ? (
+    <button
+      onClick={() => setAuthModalOpen(true)}
+      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
+    >
+      {user.avatar_url ? (
+        <img
+          src={user.avatar_url}
+          alt={user.display_name}
+          className="size-8 rounded-full object-cover border border-sidebar-border"
+        />
+      ) : (
+        <div className="size-8 rounded-full bg-foreground text-background font-bold text-xs grid place-items-center">
+          {user.display_name?.charAt(0).toUpperCase() || "R"}
         </div>
+      )}
+
+      <div className="flex flex-col min-w-0">
+        <span className="text-[11px] font-semibold text-foreground leading-tight truncate">
+          {user.display_name}
+        </span>
+        <span className="text-[9px] text-muted-foreground font-mono truncate">
+          {user.email}
+        </span>
       </div>
+    </button>
+  ) : (
+    <button
+      onClick={() => setAuthModalOpen(true)}
+      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-border hover:bg-secondary transition-colors text-xs font-medium"
+    >
+      Log in
+    </button>
+  )}
+</div>
     </aside>
   );
 }

@@ -16,9 +16,11 @@ import {
   saveBookSettings,
   recordReadingSession,
 } from "../lib/api";
-import { Heart } from "lucide-react";
+import { Heart, MessageSquare } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import ChapterDiscussionDrawer from "./reader/ChapterDiscussionDrawer";
 import type { BookDetails, Bookmark, ChapterContent, Highlight, TocItem } from "../types/epub";
+
 
 interface ReaderProps {
   book: BookDetails;
@@ -79,6 +81,7 @@ export default function Reader({ book, initialChapterIndex, onClose }: ReaderPro
   
   // Drawer states
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [discussionDrawerOpen, setDiscussionDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DrawerTab>("contents");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS);
@@ -900,11 +903,31 @@ export default function Reader({ book, initialChapterIndex, onClose }: ReaderPro
             </button>
           </div>
 
+          {/* In-Reader Chapter Discussions Toggle */}
+          <button
+            onClick={() => {
+              setDiscussionDrawerOpen(!discussionDrawerOpen);
+              setSettingsOpen(false);
+              setDrawerOpen(false);
+            }}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+              discussionDrawerOpen
+                ? "bg-amber-500/20 text-amber-900 dark:text-amber-300 font-bold border border-amber-500/30"
+                : "hover:bg-black/5 dark:hover:bg-white/10"
+            }`}
+            title={`Discuss Chapter ${currentChapter + 1}`}
+          >
+            <MessageSquare className="size-3.5 text-amber-700 dark:text-amber-400" />
+            <span className="hidden sm:inline">Discuss</span>
+            <span className="font-mono text-[10px] opacity-70">Ch. {currentChapter + 1}</span>
+          </button>
+
           {/* Typography & Spacing Settings Drawer Toggle */}
           <button
             onClick={() => {
               setSettingsOpen(!settingsOpen);
               setDrawerOpen(false);
+              setDiscussionDrawerOpen(false);
             }}
             className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
               settingsOpen ? "bg-black/10 dark:bg-white/15" : "hover:bg-black/5 dark:hover:bg-white/10"
@@ -1497,6 +1520,15 @@ export default function Reader({ book, initialChapterIndex, onClose }: ReaderPro
           )}
         </main>
       </div>
+
+      {/* Chapter-Level Community Discussion Drawer */}
+      <ChapterDiscussionDrawer
+        book={book}
+        currentChapterIndex={currentChapter}
+        currentChapterTitle={chapterContent?.title || `Chapter ${currentChapter + 1}`}
+        isOpen={discussionDrawerOpen}
+        onClose={() => setDiscussionDrawerOpen(false)}
+      />
     </div>
   );
 }
