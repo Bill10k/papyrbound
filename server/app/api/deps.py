@@ -12,6 +12,11 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/auth/login"
 )
 
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False,
+)
+
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
@@ -37,6 +42,24 @@ async def get_current_user(
         raise credentials_exception
     return user
 
+async def get_optional_current_user(
+    db: AsyncSession = Depends(get_db),
+    token: Optional[str] = Depends(oauth2_scheme_optional)
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        if not payload:
+            return None
+        user_id: Optional[str] = payload.get("sub")
+        if not user_id:
+            return None
+        result = await db.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+    except Exception:
+        return None
+
 async def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
@@ -46,3 +69,4 @@ async def get_current_active_user(
             detail="Inactive user"
         )
     return current_user
+

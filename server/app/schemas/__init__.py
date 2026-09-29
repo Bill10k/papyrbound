@@ -4,9 +4,15 @@ from app.schemas.auth import (
     UserOut,
     UserProfileUpdate,
     Token,
-    TokenPayload,
-    GoogleAuthInit,
-    GoogleAuthExchange,
+    AuthAccountOut,
+)
+from app.schemas.book_club import (
+    BookClubCreate,
+    BookClubUpdate,
+    BookClubResponse,
+    ClubMemberResponse,
+    ClubMessageCreate,
+    ClubMessageResponse,
 )
 
 __all__ = [
@@ -15,7 +21,11 @@ __all__ = [
     "UserOut",
     "UserProfileUpdate",
     "Token",
-    "TokenPayload",
-    "GoogleAuthInit",
-    "GoogleAuthExchange",
+    "AuthAccountOut",
+    "BookClubCreate",
+    "BookClubUpdate",
+    "BookClubResponse",
+    "ClubMemberResponse",
+    "ClubMessageCreate",
+    "ClubMessageResponse",
 ]

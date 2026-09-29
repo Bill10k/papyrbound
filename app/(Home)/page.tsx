@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronRight,
@@ -20,10 +20,15 @@ import {
   Flame,
   X,
   Share2,
+  BookmarkPlus,
 } from "lucide-react";
 import Link from "next/link";
 import BookCover from "@/app/components/book-cover";
 import { useApp } from "../context/AppContext";
+import { fetchClubs, joinClub, leaveClub, BookClub as ApiBookClub } from "@/app/lib/clubs-api";
+import ClubRoomModal from "@/app/components/clubs/ClubRoomModal";
+import CreateClubModal from "@/app/components/clubs/CreateClubModal";
+
 
 interface DiscussionComment {
   id: string;
@@ -154,13 +159,34 @@ export default function Home() {
   // Social & Community State
   const [discussions, setDiscussions] = useState<DiscussionComment[]>(INITIAL_DISCUSSIONS);
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<string, boolean>>({});
-  const [bookClubs, setBookClubs] = useState<BookClub[]>(INITIAL_CLUBS);
+  const [liveClubs, setLiveClubs] = useState<ApiBookClub[]>([]);
+  const [loadingClubs, setLoadingClubs] = useState(false);
+  const [activeClubRoom, setActiveClubRoom] = useState<ApiBookClub | null>(null);
+  const [createClubModalOpen, setCreateClubModalOpen] = useState(false);
   const [activeDiscussBook, setActiveDiscussBook] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState("");
   const [isSpoilerChecked, setIsSpoilerChecked] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "my-reads" | "clubs">("all");
 
   const heroBook = books.length > 0 ? books[0] : null;
+
+  useEffect(() => {
+    loadClubs();
+  }, [user]);
+
+  const loadClubs = async () => {
+    setLoadingClubs(true);
+    try {
+      const data = await fetchClubs();
+      if (data && data.length > 0) {
+        setLiveClubs(data);
+      }
+    } catch (err) {
+      console.warn("Failed to load clubs:", err);
+    } finally {
+      setLoadingClubs(false);
+    }
+  };
 
   const toggleSpoiler = (id: string) => {
     setRevealedSpoilers((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -180,18 +206,36 @@ export default function Home() {
     );
   };
 
-  const toggleJoinClub = (clubId: string) => {
-    setBookClubs((prev) =>
-      prev.map((c) =>
-        c.id === clubId
-          ? {
-              ...c,
-              isJoined: !c.isJoined,
-              membersCount: c.isJoined ? c.membersCount - 1 : c.membersCount + 1,
-            }
-          : c
-      )
-    );
+  const handleToggleJoinClub = async (e: React.MouseEvent, club: ApiBookClub) => {
+    e.stopPropagation();
+    if (!user) {
+      setAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      if (club.is_joined) {
+        await leaveClub(club.id);
+        setLiveClubs((prev) =>
+          prev.map((c) =>
+            c.id === club.id
+              ? { ...c, is_joined: false, members_count: Math.max(1, c.members_count - 1) }
+              : c
+          )
+        );
+      } else {
+        await joinClub(club.id);
+        setLiveClubs((prev) =>
+          prev.map((c) =>
+            c.id === club.id
+              ? { ...c, is_joined: true, members_count: c.members_count + 1 }
+              : c
+          )
+        );
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to join club");
+    }
   };
 
   const handlePostComment = (e: React.FormEvent) => {
@@ -222,6 +266,7 @@ export default function Home() {
     setNewCommentText("");
     setIsSpoilerChecked(false);
   };
+
 
   return (
     <main
@@ -368,37 +413,53 @@ export default function Home() {
           </section>
         ) : null}
 
-        {/* Community Nav Tabs */}
-        <div className="flex items-center gap-2 border-b border-[#d3c9b5]/60 pb-3">
+          {/* Community Nav Tabs */}
+        <div className="flex items-center justify-between border-b border-[#d3c9b5]/60 pb-3 gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("all")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "all"
+                  ? "bg-mono-800 text-mono-50"
+                  : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
+              }`}
+            >
+              All Discussions
+            </button>
+            <button
+              onClick={() => setActiveTab("my-reads")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "my-reads"
+                  ? "bg-mono-800 text-mono-50"
+                  : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
+              }`}
+            >
+              My Recent Reads
+            </button>
+            <button
+              onClick={() => setActiveTab("clubs")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                activeTab === "clubs"
+                  ? "bg-mono-800 text-mono-50"
+                  : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
+              }`}
+            >
+              Book Clubs ({liveClubs.filter((c) => c.is_joined).length} Joined)
+            </button>
+          </div>
+
           <button
-            onClick={() => setActiveTab("all")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              activeTab === "all"
-                ? "bg-mono-800 text-mono-50"
-                : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
-            }`}
+            onClick={() => {
+              if (!user) {
+                setAuthModalOpen(true);
+              } else {
+                setCreateClubModalOpen(true);
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-mono-50 border border-[#d3c9b5] text-mono-900 hover:bg-mono-200/70 transition-all cursor-pointer shadow-xs shrink-0"
           >
-            All Discussions
-          </button>
-          <button
-            onClick={() => setActiveTab("my-reads")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              activeTab === "my-reads"
-                ? "bg-mono-800 text-mono-50"
-                : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
-            }`}
-          >
-            My Recent Reads
-          </button>
-          <button
-            onClick={() => setActiveTab("clubs")}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-              activeTab === "clubs"
-                ? "bg-mono-800 text-mono-50"
-                : "text-mono-600 hover:text-mono-900 hover:bg-mono-200/50"
-            }`}
-          >
-            Book Clubs ({bookClubs.filter((c) => c.isJoined).length} Joined)
+            <BookmarkPlus className="size-3.5 text-amber-700" />
+            <span>Create Book Club</span>
           </button>
         </div>
 
@@ -600,51 +661,58 @@ export default function Home() {
                   Community Book Clubs
                 </h3>
                 <span className="text-xs text-mono-500 font-mono">
-                  {bookClubs.length} Active
+                  {liveClubs.length} Active
                 </span>
               </div>
 
               <div className="space-y-3">
-                {bookClubs.map((club) => (
+                {liveClubs.map((club) => (
                   <div
                     key={club.id}
-                    className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4 shadow-xs space-y-2.5 transition-all hover:border-mono-400"
+                    onClick={() => setActiveClubRoom(club)}
+                    className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4 shadow-xs space-y-2.5 transition-all hover:border-mono-400 cursor-pointer group"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="text-sm font-serif font-bold text-mono-900">
+                        <h4 className="text-sm font-serif font-bold text-mono-900 group-hover:text-amber-800 transition-colors">
                           {club.name}
                         </h4>
                         <span className="text-[10px] text-mono-500 font-mono uppercase tracking-wider">
-                          {club.category} • {club.membersCount} members
+                          {club.category} • {club.members_count} members
                         </span>
                       </div>
 
                       <button
-                        onClick={() => toggleJoinClub(club.id)}
+                        onClick={(e) => handleToggleJoinClub(e, club)}
                         className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                          club.isJoined
+                          club.is_joined
                             ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                             : "bg-mono-800 text-mono-50 hover:bg-mono-700"
                         }`}
                       >
-                        {club.isJoined ? "Joined ✓" : "Join Club"}
+                        {club.is_joined ? "Joined ✓" : "Join Club"}
                       </button>
                     </div>
 
-                    <p className="text-xs text-mono-600 leading-snug">
-                      {club.description}
-                    </p>
+                    {club.description && (
+                      <p className="text-xs text-mono-600 leading-snug line-clamp-2">
+                        {club.description}
+                      </p>
+                    )}
 
                     <div className="pt-2 border-t border-[#d3c9b5]/40 flex flex-col gap-1 text-[11px] text-mono-700 font-mono">
-                      <div className="flex items-center gap-1.5 text-mono-800">
-                        <BookOpen className="size-3 text-amber-700" />
-                        <span>Currently reading: <strong>{club.currentBook}</strong></span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-mono-500">
-                        <Calendar className="size-3" />
-                        <span>Next discussion: {club.nextMeeting}</span>
-                      </div>
+                      {club.current_book_title && (
+                        <div className="flex items-center gap-1.5 text-mono-800 truncate">
+                          <BookOpen className="size-3 text-amber-700 shrink-0" />
+                          <span className="truncate">Currently reading: <strong>{club.current_book_title}</strong></span>
+                        </div>
+                      )}
+                      {club.meeting_schedule && (
+                        <div className="flex items-center gap-1.5 text-mono-500 truncate">
+                          <Calendar className="size-3 shrink-0" />
+                          <span className="truncate">Next discussion: {club.meeting_schedule}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -724,8 +792,31 @@ export default function Home() {
         </div>
 
       </div>
+
+      {/* Book Club Room Modal */}
+      <ClubRoomModal
+        club={activeClubRoom}
+        isOpen={!!activeClubRoom}
+        onClose={() => setActiveClubRoom(null)}
+        onClubUpdated={(updated) => {
+          setLiveClubs((prev) =>
+            prev.map((c) => (c.id === updated.id ? updated : c))
+          );
+        }}
+      />
+
+      {/* Create Book Club Modal */}
+      <CreateClubModal
+        isOpen={createClubModalOpen}
+        onClose={() => setCreateClubModalOpen(false)}
+        onClubCreated={(newClub) => {
+          setLiveClubs((prev) => [newClub, ...prev]);
+          setActiveClubRoom(newClub);
+        }}
+      />
     </main>
   );
 }
+
 
 
