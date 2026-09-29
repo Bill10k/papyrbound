@@ -234,17 +234,17 @@ export default function Sidebar() {
             {user.avatar_url ? (
               <img
                 src={user.avatar_url}
-                alt={user.display_name}
+                alt={user.display_name || user.username}
                 className="size-8 rounded-full object-cover border border-sidebar-border"
               />
             ) : (
-              <div className="size-8 rounded-full bg-mono-800 text-mono-50 grid place-items-center font-bold text-xs">
-                {user.display_name.charAt(0).toUpperCase()}
+              <div className="size-8 rounded-full bg-amber-700 text-mono-50 grid place-items-center font-bold text-xs">
+                {(user.display_name || user.username || "U").charAt(0).toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-sidebar-foreground truncate">
-                {user.display_name}
+                {user.display_name || user.username}
               </p>
               <p className="text-[11px] text-sidebar-muted truncate font-mono">
                 @{user.username}

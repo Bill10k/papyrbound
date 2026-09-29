@@ -70,28 +70,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isImporting, setIsImporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Validate stored session on startup
+  // Validate stored session on startup or URL query params
   useEffect(() => {
-  const validateStoredSession = async () => {
-    const savedToken = getStoredToken();
+    const validateStoredSession = async () => {
+      let activeToken = getStoredToken();
 
-    if (savedToken) {
-      try {
-        const userData = await getCurrentUser(savedToken);
-        setUser(userData);
-        setToken(savedToken);
-      } catch {
-        // Token expired or server unreachable
-        setUser(null);
-        setToken(null);
+      // Check if redirected from OAuth callback with ?auth_token=
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get("auth_token") || urlParams.get("token");
+        if (urlToken) {
+          activeToken = urlToken;
+          try {
+            const cleanUrl = window.location.pathname + window.location.hash;
+            window.history.replaceState({}, document.title, cleanUrl);
+          } catch {}
+        }
       }
-    }
 
-    setHydrated(true);
-  };
+      if (activeToken) {
+        try {
+          const userData = await getCurrentUser(activeToken);
+          setUser(userData);
+          setToken(activeToken);
+          saveAuthSession({
+            access_token: activeToken,
+            token_type: "bearer",
+            expires_in: 86400,
+            user: userData,
+          });
+        } catch {
+          // Token expired or server unreachable
+          setUser(null);
+          setToken(null);
+        }
+      }
 
-  validateStoredSession();
-}, []);
+      setHydrated(true);
+    };
+
+    validateStoredSession();
+  }, []);
 
   // Load favorites from localStorage
   useEffect(() => {

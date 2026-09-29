@@ -17,82 +17,6 @@ from app.api.deps import get_current_user, get_optional_current_user
 
 router = APIRouter()
 
-SAMPLE_DISCUSSIONS = [
-    {
-        "book_title": "20th Century Boys Vol. 05",
-        "book_author": "Naoki Urasawa",
-        "chapter_index": 41,
-        "chapter_title": "Chapter 42: The Revelation",
-        "content": "This scene completely changes how I see 'Friend'. The visual foreshadowing from Chapter 12 finally clicked!",
-        "is_spoiler": True,
-        "spoiler_warning": "Contains major Chapter 42 plot revelation",
-    },
-    {
-        "book_title": "The Hobbit",
-        "book_author": "J.R.R. Tolkien",
-        "chapter_index": 4,
-        "chapter_title": "Chapter 5: Riddles in the Dark",
-        "content": "I didn't expect Bilbo to actually outsmart Gollum with the riddle in his pocket. The tension throughout this dialogue is legendary.",
-        "is_spoiler": False,
-        "spoiler_warning": None,
-    },
-    {
-        "book_title": "Red Rising",
-        "book_author": "Pierce Brown",
-        "chapter_index": 13,
-        "chapter_title": "Chapter 14: The Institute",
-        "content": "Darrow's test of survival had my heart beating so fast. The societal caste system Pierce Brown built is incredibly brutal.",
-        "is_spoiler": False,
-        "spoiler_warning": None,
-    },
-    {
-        "book_title": "Shadow Slave",
-        "book_author": "Guiltythree",
-        "chapter_index": 87,
-        "chapter_title": "Chapter 88: Forgotten Shore",
-        "content": "Sunny's flaw is both the most hilarious and terrifying curse. How he navigates deceit without lying is pure genius.",
-        "is_spoiler": False,
-        "spoiler_warning": None,
-    },
-]
-
-
-async def ensure_sample_discussions(db: AsyncSession):
-    """Seed sample discussions if table is empty"""
-    result = await db.execute(select(func.count(DiscussionPost.id)))
-    count = result.scalar()
-    if count == 0:
-        # Create or find a community author
-        user_res = await db.execute(select(User).limit(1))
-        system_user = user_res.scalar_one_or_none()
-        if not system_user:
-            system_user = User(
-                id=str(uuid.uuid4()),
-                email="reader@papyrbound.app",
-                username="reader_community",
-                display_name="Papyrbound Reader",
-                is_active=True,
-                is_verified=True,
-            )
-            db.add(system_user)
-            await db.flush()
-
-        for item in SAMPLE_DISCUSSIONS:
-            post = DiscussionPost(
-                id=str(uuid.uuid4()),
-                book_title=item["book_title"],
-                book_author=item["book_author"],
-                chapter_index=item["chapter_index"],
-                chapter_title=item["chapter_title"],
-                user_id=system_user.id,
-                content=item["content"],
-                is_spoiler=item["is_spoiler"],
-                spoiler_warning=item["spoiler_warning"],
-            )
-            db.add(post)
-        await db.commit()
-
-
 @router.get("", response_model=List[DiscussionResponse])
 async def list_discussions(
     book_title: Optional[str] = Query(None),
@@ -102,8 +26,6 @@ async def list_discussions(
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """List chapter and book discussion comments with user profiles and like statuses."""
-    await ensure_sample_discussions(db)
-
     query = select(DiscussionPost).order_by(desc(DiscussionPost.created_at)).limit(limit)
 
     if book_title:

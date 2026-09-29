@@ -20,8 +20,7 @@ import {
 import BookCover from "@/app/components/book-cover";
 import ContextMenu from "@/app/components/context-menu";
 import DetailsSidebar from "@/app/components/details-sidebar";
-import { favourites, recentReads } from "../(Home)/data";
-import { initialCollections, type Collection } from "./data";
+import { type Collection } from "./data";
 import { useApp } from "../context/AppContext";
 
 type Dialog = "create" | "rename" | "delete" | null;
@@ -117,7 +116,7 @@ export default function CollectionsPage() {
         progress: b.progress_percent,
       })),
     },
-  ] : initialCollections;
+  ] : [];
 
   const collections: Collection[] = [...dynamicCollections, ...customCollections];
 

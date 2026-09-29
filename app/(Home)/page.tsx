@@ -37,128 +37,6 @@ import CreateClubModal from "@/app/components/clubs/CreateClubModal";
 
 
 
-interface DiscussionComment {
-  id: string;
-  bookId?: string;
-  bookTitle: string;
-  chapterIndex: number;
-  chapterTitle: string;
-  userName: string;
-  userHandle: string;
-  avatarColor: string;
-  content: string;
-  isSpoiler: boolean;
-  spoilerWarning?: string;
-  likes: number;
-  replies: number;
-  timeAgo: string;
-  isLiked?: boolean;
-}
-
-interface BookClub {
-  id: string;
-  name: string;
-  category: string;
-  membersCount: number;
-  currentBook: string;
-  nextMeeting: string;
-  description: string;
-  isJoined?: boolean;
-}
-
-const INITIAL_DISCUSSIONS: DiscussionComment[] = [
-  {
-    id: "disc-1",
-    bookTitle: "20th Century Boys Vol. 05",
-    chapterIndex: 42,
-    chapterTitle: "Chapter 42: The Revelation",
-    userName: "Kofi Mensah",
-    userHandle: "kofi_m",
-    avatarColor: "bg-amber-600",
-    content: "This scene completely changes how I see 'Friend'. The visual foreshadowing from Chapter 12 finally clicked!",
-    isSpoiler: true,
-    spoilerWarning: "Contains major Chapter 42 plot revelation",
-    likes: 24,
-    replies: 8,
-    timeAgo: "15m ago",
-  },
-  {
-    id: "disc-2",
-    bookTitle: "The Hobbit",
-    chapterIndex: 5,
-    chapterTitle: "Chapter 5: Riddles in the Dark",
-    userName: "Alice Vance",
-    userHandle: "alice_v",
-    avatarColor: "bg-emerald-600",
-    content: "I didn't expect Bilbo to actually outsmart Gollum with the riddle in his pocket. The tension throughout this dialogue is legendary.",
-    isSpoiler: false,
-    likes: 19,
-    replies: 12,
-    timeAgo: "42m ago",
-  },
-  {
-    id: "disc-3",
-    bookTitle: "Red Rising",
-    chapterIndex: 14,
-    chapterTitle: "Chapter 14: The Institute",
-    userName: "John Doe",
-    userHandle: "johnd",
-    avatarColor: "bg-rose-600",
-    content: "Darrow's test of survival had my heart beating so fast. The societal caste system Pierce Brown built is incredibly brutal.",
-    isSpoiler: false,
-    likes: 31,
-    replies: 5,
-    timeAgo: "2h ago",
-  },
-  {
-    id: "disc-4",
-    bookTitle: "Shadow Slave",
-    chapterIndex: 88,
-    chapterTitle: "Chapter 88: Forgotten Shore",
-    userName: "Ama Serwaa",
-    userHandle: "ama_s",
-    avatarColor: "bg-purple-600",
-    content: "Sunny's flaw is both the most hilarious and terrifying curse. How he navigates deceit without lying is pure genius.",
-    isSpoiler: false,
-    likes: 47,
-    replies: 16,
-    timeAgo: "3h ago",
-  },
-];
-
-const INITIAL_CLUBS: BookClub[] = [
-  {
-    id: "club-1",
-    name: "Fantasy Readers Guild",
-    category: "High Fantasy & Epics",
-    membersCount: 142,
-    currentBook: "The Name of the Wind",
-    nextMeeting: "Friday, 8:00 PM GMT",
-    description: "Weekly deep dives into worldbuilding, magic systems, and epic journeys.",
-    isJoined: false,
-  },
-  {
-    id: "club-2",
-    name: "Manga & Graphic Novel Circle",
-    category: "Manga & Comics",
-    membersCount: 289,
-    currentBook: "20th Century Boys",
-    nextMeeting: "Sunday, 6:30 PM GMT",
-    description: "Analyzing panel flow, artwork, and suspense in serialized graphic fiction.",
-    isJoined: true,
-  },
-  {
-    id: "club-3",
-    name: "Sci-Fi & Cyberpunk Frontiers",
-    category: "Science Fiction",
-    membersCount: 98,
-    currentBook: "Red Rising (Iron Gold)",
-    nextMeeting: "Next Tuesday, 7:00 PM GMT",
-    description: "Exploring dystopian futures, space operas, and hard sci-fi themes.",
-    isJoined: false,
-  },
-];
-
 export default function Home() {
   const [hover, setHover] = useState(false);
   const { books, openBook, importNewBook, isImporting, user, setAuthModalOpen } = useApp();
@@ -187,11 +65,10 @@ export default function Home() {
     setLoadingClubs(true);
     try {
       const data = await fetchClubs();
-      if (data && data.length > 0) {
-        setLiveClubs(data);
-      }
+      setLiveClubs(data || []);
     } catch (err) {
       console.warn("Failed to load clubs:", err);
+      setLiveClubs([]);
     } finally {
       setLoadingClubs(false);
     }
@@ -201,11 +78,10 @@ export default function Home() {
     setLoadingDiscussions(true);
     try {
       const data = await fetchDiscussions();
-      if (data && data.length > 0) {
-        setDiscussions(data);
-      }
+      setDiscussions(data || []);
     } catch (err) {
       console.warn("Failed to load discussions:", err);
+      setDiscussions([]);
     } finally {
       setLoadingDiscussions(false);
     }
@@ -317,10 +193,12 @@ export default function Home() {
               <h1 className="text-3xl font-serif font-bold tracking-tight text-mono-900">
                 Papyrbound
               </h1>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-100 text-emerald-800 border border-emerald-300">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                1,420 Online Readers
-              </span>
+              {user && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Online
+                </span>
+              )}
             </div>
             <p className="text-xs text-mono-600 mt-1">
               Your offline-first reader and reading community platform.
@@ -336,16 +214,18 @@ export default function Home() {
                 {user.avatar_url ? (
                   <img
                     src={user.avatar_url}
-                    alt={user.display_name}
+                    alt={user.display_name || user.username}
                     className="size-6 rounded-full object-cover border border-[#d3c9b5]"
                   />
                 ) : (
                   <div className="size-6 rounded-full bg-amber-700 text-mono-50 grid place-items-center font-bold text-[11px]">
-                    {user.display_name.charAt(0).toUpperCase()}
+                    {(user.display_name || user.username || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="text-left">
-                  <p className="font-semibold text-mono-900 leading-none">{user.display_name}</p>
+                  <p className="font-semibold text-mono-900 leading-none">
+                    {user.display_name || user.username}
+                  </p>
                   <p className="text-[10px] text-emerald-700 flex items-center gap-1 leading-none mt-0.5">
                     <CheckCircle2 className="size-2.5" /> Connected
                   </p>
@@ -438,9 +318,6 @@ export default function Home() {
                   >
                     <MessageSquare className="size-4 text-amber-700" />
                     Discuss this Book
-                    <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-900 text-[10px] font-mono">
-                      124 readers
-                    </span>
                   </button>
                 </div>
               </div>
@@ -573,123 +450,133 @@ export default function Home() {
 
             {/* Discussions List */}
             <div className="space-y-4">
-              {discussions.map((disc) => {
-                const isRevealed = revealedSpoilers[disc.id];
+              {discussions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#d3c9b5] bg-mono-50/50 p-8 text-center space-y-2">
+                  <MessageSquare className="size-8 text-mono-400 mx-auto" />
+                  <h4 className="text-sm font-serif font-bold text-mono-800">No discussions posted yet</h4>
+                  <p className="text-xs text-mono-500 max-w-sm mx-auto">
+                    Start a discussion above for any book or chapter in your library to share reactions and notes with the community.
+                  </p>
+                </div>
+              ) : (
+                discussions.map((disc) => {
+                  const isRevealed = revealedSpoilers[disc.id];
 
-                return (
-                  <motion.article
-                    key={disc.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4.5 shadow-xs space-y-3 transition-all hover:border-mono-400"
-                  >
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        {disc.user?.avatar_url ? (
-                          <img
-                            src={disc.user.avatar_url}
-                            alt={disc.user.display_name}
-                            className="size-7 rounded-full object-cover border border-[#d3c9b5]"
-                          />
-                        ) : (
-                          <div className="size-7 rounded-full bg-mono-800 text-mono-50 grid place-items-center font-bold text-xs">
-                            {(disc.user?.display_name || "R").charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-mono-900">
-                              {disc.user?.display_name || "Community Reader"}
-                            </span>
-                            <span className="text-[10px] text-mono-500 font-mono">
-                              @{disc.user?.username || "reader"}
-                            </span>
-                            <span className="text-[10px] text-mono-400">
-                              • {new Date(disc.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px] font-semibold text-amber-900 bg-amber-100/80 px-1.5 py-0.2 rounded">
-                              {disc.book_title}
-                            </span>
-                            <span className="text-[10px] font-mono text-mono-500">
-                              {disc.chapter_title}
-                            </span>
+                  return (
+                    <motion.article
+                      key={disc.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4.5 shadow-xs space-y-3 transition-all hover:border-mono-400"
+                    >
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          {disc.user?.avatar_url ? (
+                            <img
+                              src={disc.user.avatar_url}
+                              alt={disc.user.display_name}
+                              className="size-7 rounded-full object-cover border border-[#d3c9b5]"
+                            />
+                          ) : (
+                            <div className="size-7 rounded-full bg-mono-800 text-mono-50 grid place-items-center font-bold text-xs">
+                              {(disc.user?.display_name || "R").charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-mono-900">
+                                {disc.user?.display_name || "Community Reader"}
+                              </span>
+                              <span className="text-[10px] text-mono-500 font-mono">
+                                @{disc.user?.username || "reader"}
+                              </span>
+                              <span className="text-[10px] text-mono-400">
+                                • {new Date(disc.created_at).toLocaleDateString([], { month: "short", day: "numeric" })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] font-semibold text-amber-900 bg-amber-100/80 px-1.5 py-0.2 rounded">
+                                {disc.book_title}
+                              </span>
+                              <span className="text-[10px] font-mono text-mono-500">
+                                {disc.chapter_title}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Content & Spoiler Shield */}
-                    {disc.is_spoiler && !isRevealed ? (
-                      <div className="rounded-lg border border-amber-300 bg-amber-50/80 p-3 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-xs text-amber-900">
-                          <ShieldAlert className="size-4 text-amber-600 shrink-0" />
-                          <span>
-                            <strong>Spoiler Protection:</strong>{" "}
-                            {disc.spoiler_warning || "Contains content from a later chapter"}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => toggleSpoiler(disc.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-200 text-amber-950 hover:bg-amber-300 text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
-                        >
-                          <Eye className="size-3" />
-                          Reveal
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-mono-800 leading-relaxed">
-                          {disc.content}
-                        </p>
-                        {disc.is_spoiler && isRevealed && (
+                      {/* Content & Spoiler Shield */}
+                      {disc.is_spoiler && !isRevealed ? (
+                        <div className="rounded-lg border border-amber-300 bg-amber-50/80 p-3 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-xs text-amber-900">
+                            <ShieldAlert className="size-4 text-amber-600 shrink-0" />
+                            <span>
+                              <strong>Spoiler Protection:</strong>{" "}
+                              {disc.spoiler_warning || "Contains content from a later chapter"}
+                            </span>
+                          </div>
                           <button
                             onClick={() => toggleSpoiler(disc.id)}
-                            className="inline-flex items-center gap-1 text-[10px] text-mono-400 hover:text-mono-600 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-200 text-amber-950 hover:bg-amber-300 text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
                           >
-                            <EyeOff className="size-2.5" /> Hide spoiler
+                            <Eye className="size-3" />
+                            Reveal
                           </button>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-mono-800 leading-relaxed">
+                            {disc.content}
+                          </p>
+                          {disc.is_spoiler && isRevealed && (
+                            <button
+                              onClick={() => toggleSpoiler(disc.id)}
+                              className="inline-flex items-center gap-1 text-[10px] text-mono-400 hover:text-mono-600 cursor-pointer"
+                            >
+                              <EyeOff className="size-2.5" /> Hide spoiler
+                            </button>
+                          )}
+                        </div>
+                      )}
 
-                    {/* Footer Actions */}
-                    <div className="flex items-center justify-between border-t border-[#d3c9b5]/40 pt-2 text-xs text-mono-500">
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => toggleLike(disc.id)}
-                          className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${
-                            disc.is_liked ? "text-rose-600 font-semibold" : "hover:text-mono-800"
-                          }`}
-                        >
-                          <Heart
-                            className="size-3.5"
-                            fill={disc.is_liked ? "currentColor" : "none"}
-                          />
-                          <span>{disc.likes_count}</span>
-                        </button>
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between border-t border-[#d3c9b5]/40 pt-2 text-xs text-mono-500">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => toggleLike(disc.id)}
+                            className={`flex items-center gap-1 text-xs transition-colors cursor-pointer ${
+                              disc.is_liked ? "text-rose-600 font-semibold" : "hover:text-mono-800"
+                            }`}
+                          >
+                            <Heart
+                              className="size-3.5"
+                              fill={disc.is_liked ? "currentColor" : "none"}
+                            />
+                            <span>{disc.likes_count}</span>
+                          </button>
+
+                          <button
+                            onClick={() => setActiveDiscussBook(disc.book_title)}
+                            className="flex items-center gap-1 text-xs hover:text-mono-800 transition-colors cursor-pointer"
+                          >
+                            <MessageSquare className="size-3.5" />
+                            <span>Discuss Book</span>
+                          </button>
+                        </div>
 
                         <button
                           onClick={() => setActiveDiscussBook(disc.book_title)}
-                          className="flex items-center gap-1 text-xs hover:text-mono-800 transition-colors cursor-pointer"
+                          className="text-[11px] font-medium text-mono-700 hover:text-amber-800 cursor-pointer"
                         >
-                          <MessageSquare className="size-3.5" />
-                          <span>Discuss Book</span>
+                          Join Thread →
                         </button>
                       </div>
-
-                      <button
-                        onClick={() => setActiveDiscussBook(disc.book_title)}
-                        className="text-[11px] font-medium text-mono-700 hover:text-amber-800 cursor-pointer"
-                      >
-                        Join Thread →
-                      </button>
-                    </div>
-                  </motion.article>
-                );
-              })}
+                    </motion.article>
+                  );
+                })
+              )}
             </div>
           </section>
 
@@ -709,56 +596,76 @@ export default function Home() {
               </div>
 
               <div className="space-y-3">
-                {liveClubs.map((club) => (
-                  <div
-                    key={club.id}
-                    onClick={() => setActiveClubRoom(club)}
-                    className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4 shadow-xs space-y-2.5 transition-all hover:border-mono-400 cursor-pointer group"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="text-sm font-serif font-bold text-mono-900 group-hover:text-amber-800 transition-colors">
-                          {club.name}
-                        </h4>
-                        <span className="text-[10px] text-mono-500 font-mono uppercase tracking-wider">
-                          {club.category} • {club.members_count} members
-                        </span>
+                {liveClubs.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#d3c9b5] bg-mono-50/50 p-6 text-center space-y-2">
+                    <Users className="size-6 text-mono-400 mx-auto" />
+                    <h4 className="text-xs font-serif font-bold text-mono-800">No book clubs yet</h4>
+                    <p className="text-[11px] text-mono-500 max-w-xs mx-auto">
+                      Create a book club to schedule group readings, discuss chapters together, and host live chat rooms.
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (!user) setAuthModalOpen(true);
+                        else setCreateClubModalOpen(true);
+                      }}
+                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-mono-800 text-mono-50 text-xs font-semibold hover:bg-mono-700 transition-colors cursor-pointer"
+                    >
+                      <BookmarkPlus className="size-3.5" />
+                      Create Book Club
+                    </button>
+                  </div>
+                ) : (
+                  liveClubs.map((club) => (
+                    <div
+                      key={club.id}
+                      onClick={() => setActiveClubRoom(club)}
+                      className="rounded-xl border border-[#d3c9b5] bg-mono-50 p-4 shadow-xs space-y-2.5 transition-all hover:border-mono-400 cursor-pointer group"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-serif font-bold text-mono-900 group-hover:text-amber-800 transition-colors">
+                            {club.name}
+                          </h4>
+                          <span className="text-[10px] text-mono-500 font-mono uppercase tracking-wider">
+                            {club.category} • {club.members_count} members
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={(e) => handleToggleJoinClub(e, club)}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                            club.is_joined
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                              : "bg-mono-800 text-mono-50 hover:bg-mono-700"
+                          }`}
+                        >
+                          {club.is_joined ? "Joined ✓" : "Join Club"}
+                        </button>
                       </div>
 
-                      <button
-                        onClick={(e) => handleToggleJoinClub(e, club)}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                          club.is_joined
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            : "bg-mono-800 text-mono-50 hover:bg-mono-700"
-                        }`}
-                      >
-                        {club.is_joined ? "Joined ✓" : "Join Club"}
-                      </button>
-                    </div>
-
-                    {club.description && (
-                      <p className="text-xs text-mono-600 leading-snug line-clamp-2">
-                        {club.description}
-                      </p>
-                    )}
-
-                    <div className="pt-2 border-t border-[#d3c9b5]/40 flex flex-col gap-1 text-[11px] text-mono-700 font-mono">
-                      {club.current_book_title && (
-                        <div className="flex items-center gap-1.5 text-mono-800 truncate">
-                          <BookOpen className="size-3 text-amber-700 shrink-0" />
-                          <span className="truncate">Currently reading: <strong>{club.current_book_title}</strong></span>
-                        </div>
+                      {club.description && (
+                        <p className="text-xs text-mono-600 leading-snug line-clamp-2">
+                          {club.description}
+                        </p>
                       )}
-                      {club.meeting_schedule && (
-                        <div className="flex items-center gap-1.5 text-mono-500 truncate">
-                          <Calendar className="size-3 shrink-0" />
-                          <span className="truncate">Next discussion: {club.meeting_schedule}</span>
-                        </div>
-                      )}
+
+                      <div className="pt-2 border-t border-[#d3c9b5]/40 flex flex-col gap-1 text-[11px] text-mono-700 font-mono">
+                        {club.current_book_title && (
+                          <div className="flex items-center gap-1.5 text-mono-800 truncate">
+                            <BookOpen className="size-3 text-amber-700 shrink-0" />
+                            <span className="truncate">Currently reading: <strong>{club.current_book_title}</strong></span>
+                          </div>
+                        )}
+                        {club.meeting_schedule && (
+                          <div className="flex items-center gap-1.5 text-mono-500 truncate">
+                            <Calendar className="size-3 shrink-0" />
+                            <span className="truncate">Next discussion: {club.meeting_schedule}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 

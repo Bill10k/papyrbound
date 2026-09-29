@@ -28,73 +28,6 @@ def slugify(text: str) -> str:
     return text or str(uuid.uuid4())[:8]
 
 
-SAMPLE_CLUBS = [
-    {
-        "name": "Fantasy Readers Guild",
-        "category": "High Fantasy & Epics",
-        "description": "Weekly deep dives into worldbuilding, magic systems, and epic journeys across fantasy lore.",
-        "current_book_title": "The Name of the Wind",
-        "current_book_author": "Patrick Rothfuss",
-        "current_chapter_target": "Chapter 25: The Eolian",
-        "meeting_schedule": "Every Friday at 8:00 PM GMT",
-        "cover_image": "/covers/ashfall-01.webp",
-    },
-    {
-        "name": "Manga & Graphic Novel Circle",
-        "category": "Manga & Comics",
-        "description": "Analyzing panel composition, pacing, artwork, and narrative suspense in serialized visual fiction.",
-        "current_book_title": "20th Century Boys",
-        "current_book_author": "Naoki Urasawa",
-        "current_chapter_target": "Volume 5, Chapter 42",
-        "meeting_schedule": "Every Sunday at 6:30 PM GMT",
-        "cover_image": "/covers/ashfall-01.webp",
-    },
-    {
-        "name": "Sci-Fi & Cyberpunk Frontiers",
-        "category": "Science Fiction",
-        "description": "Exploring dystopian futures, Dyson spheres, post-human philosophy, and hard sci-fi masterworks.",
-        "current_book_title": "Red Rising (Iron Gold)",
-        "current_book_author": "Pierce Brown",
-        "current_chapter_target": "Chapter 14: The Institute",
-        "meeting_schedule": "Every Tuesday at 7:00 PM GMT",
-        "cover_image": "/covers/ashfall-01.webp",
-    },
-    {
-        "name": "Classic Literature Society",
-        "category": "Classics",
-        "description": "Reading and dissecting timeless historical classics, psychological drama, and philosophical novels.",
-        "current_book_title": "Crime and Punishment",
-        "current_book_author": "Fyodor Dostoevsky",
-        "current_chapter_target": "Part 2, Chapter 3",
-        "meeting_schedule": "Every Thursday at 7:30 PM GMT",
-        "cover_image": "/covers/ashfall-01.webp",
-    },
-]
-
-
-async def ensure_sample_clubs(db: AsyncSession):
-    """Seed initial clubs if table is empty"""
-    result = await db.execute(select(func.count(BookClub.id)))
-    count = result.scalar()
-    if count == 0:
-        for item in SAMPLE_CLUBS:
-            club = BookClub(
-                id=str(uuid.uuid4()),
-                name=item["name"],
-                slug=slugify(item["name"]),
-                category=item["category"],
-                description=item["description"],
-                current_book_title=item["current_book_title"],
-                current_book_author=item["current_book_author"],
-                current_chapter_target=item["current_chapter_target"],
-                meeting_schedule=item["meeting_schedule"],
-                cover_image=item["cover_image"],
-                is_private=False,
-            )
-            db.add(club)
-        await db.commit()
-
-
 @router.get("", response_model=List[BookClubResponse])
 async def list_book_clubs(
     category: Optional[str] = Query(None),
@@ -103,8 +36,6 @@ async def list_book_clubs(
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """List all public book clubs with search, category filters, and live membership status."""
-    await ensure_sample_clubs(db)
-
     query = select(BookClub).where(BookClub.is_private.is_(False))
 
     if category and category.lower() != "all":
