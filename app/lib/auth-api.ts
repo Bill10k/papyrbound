@@ -105,6 +105,21 @@ export async function initGoogleOAuth(codeChallenge?: string): Promise<{
   return response.json();
 }
 
+export async function checkGoogleAuthStatus(state: string): Promise<{
+  authenticated: boolean;
+  token?: AuthTokenResponse;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/google/status?state=${encodeURIComponent(state)}`);
+    if (!response.ok) {
+      return { authenticated: false };
+    }
+    return response.json();
+  } catch {
+    return { authenticated: false };
+  }
+}
+
 export async function exchangeGoogleCode(
   code: string,
   codeVerifier: string

@@ -16,10 +16,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
-import { initGoogleOAuth, exchangeGoogleCode } from "../lib/auth-api";
+import { initGoogleOAuth, checkGoogleAuthStatus } from "../lib/auth-api";
 
 export default function AuthModal() {
-  const { user, login, register, logout, authModalOpen, setAuthModalOpen } = useApp();
+  const { user, login, register, logout, authModalOpen, setAuthModalOpen, setAuthSession } = useApp();
   
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -61,9 +61,9 @@ export default function AuthModal() {
     setError(null);
     setIsLoading(true);
     try {
-      // 1. Initialize Google OAuth flow from backend to retrieve authorization URL
+      // 1. Initialize Google OAuth flow from backend to retrieve authorization URL & unique state
       const data = await initGoogleOAuth();
-      if (!data.redirect_url) {
+      if (!data.redirect_url || !data.state) {
         throw new Error("Invalid response from authorization server.");
       }
 
@@ -84,11 +84,40 @@ export default function AuthModal() {
         return;
       }
 
-      // 3. Setup polling monitor for popup closure
-      const checkPopupInterval = setInterval(() => {
-        if (!popup || popup.closed) {
-          clearInterval(checkPopupInterval);
-          setIsLoading(false);
+      // 3. Setup active polling loop for desktop authentication handoff
+      let pollCount = 0;
+      const maxPolls = 180; // 3 minutes timeout
+      const pollInterval = setInterval(async () => {
+        pollCount++;
+        try {
+          const statusRes = await checkGoogleAuthStatus(data.state);
+          if (statusRes.authenticated && statusRes.token) {
+            clearInterval(pollInterval);
+            try {
+              if (popup && !popup.closed) {
+                popup.close();
+              }
+            } catch {}
+            setAuthSession(statusRes.token.user, statusRes.token.access_token);
+            setIsLoading(false);
+            return;
+          }
+        } catch {
+          // ignore transient poll network hiccups
+        }
+
+        // Check if popup was closed or timeout reached
+        if ((!popup || popup.closed) || pollCount >= maxPolls) {
+          setTimeout(async () => {
+            try {
+              const finalCheck = await checkGoogleAuthStatus(data.state);
+              if (finalCheck.authenticated && finalCheck.token) {
+                setAuthSession(finalCheck.token.user, finalCheck.token.access_token);
+              }
+            } catch {}
+            clearInterval(pollInterval);
+            setIsLoading(false);
+          }, 1000);
         }
       }, 1000);
     } catch (err: any) {

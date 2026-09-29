@@ -26,6 +26,9 @@ GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
+# In-memory store for pending desktop OAuth handoffs keyed by state
+PENDING_OAUTH_SESSIONS: dict[str, Optional[Token]] = {}
+
 
 @router.get("/init", response_model=GoogleAuthInit)
 async def init_google_oauth(
@@ -37,6 +40,7 @@ async def init_google_oauth(
     Returns the authorization redirect URL with state and optional code_challenge.
     """
     state = secrets.token_urlsafe(32)
+    PENDING_OAUTH_SESSIONS[state] = None
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID or "papyrbound-dev-client-id",
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
@@ -56,6 +60,19 @@ async def init_google_oauth(
         state=state,
         code_challenge=code_challenge or ""
     )
+
+
+@router.get("/status")
+async def get_oauth_status(
+    state: str = Query(..., description="OAuth state parameter")
+):
+    """
+    Polling endpoint for desktop/webview clients to retrieve OAuth completion session.
+    """
+    if state in PENDING_OAUTH_SESSIONS and PENDING_OAUTH_SESSIONS[state] is not None:
+        token_data = PENDING_OAUTH_SESSIONS.pop(state)
+        return {"authenticated": True, "token": token_data}
+    return {"authenticated": False}
 
 
 @router.get("/callback", response_class=HTMLResponse)
@@ -144,6 +161,9 @@ async def google_oauth_callback(
         display_name=userinfo.get("name", userinfo["email"].split("@")[0]),
         avatar_url=userinfo.get("picture")
     )
+
+    if state:
+        PENDING_OAUTH_SESSIONS[state] = token_obj
 
     user_json = token_obj.user.model_dump_json()
 
