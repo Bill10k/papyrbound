@@ -6,7 +6,7 @@
     "editor.fontFamily": "'Jetbrains Mono', monospace",
     "editor.fontLigatures": true,
     "editor.cursorBlinking": "smooth",
-    "workbench.colorTheme": "Rosé Pine",
+    "workbench.colorTheme": "Default Dark Modern",
 "editor.inlayHints.enabled": "off",
     "editor.tokenColorCustomizations": {
     "textMateRules": [
