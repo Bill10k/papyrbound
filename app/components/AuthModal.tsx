@@ -28,6 +28,7 @@ export default function AuthModal() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oauthWaiting, setOauthWaiting] = useState(false);
 
   if (!authModalOpen) return null;
 
@@ -56,8 +57,6 @@ export default function AuthModal() {
       setIsLoading(false);
     }
   };
-
-  const [oauthWaiting, setOauthWaiting] = useState(false);
 
   const handleGoogleOAuth = async () => {
     setError(null);
