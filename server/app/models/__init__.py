@@ -3,6 +3,7 @@ from app.models.user import User
 from app.models.auth_account import AuthAccount
 from app.models.book_club import BookClub, ClubMember, ClubMessage
 from app.models.discussion import DiscussionPost, DiscussionLike
+from app.models.collection import SharedCollection, SharedCollectionItem, SharedCollectionLike
 
 __all__ = [
     "Base",
@@ -13,4 +14,7 @@ __all__ = [
     "ClubMessage",
     "DiscussionPost",
     "DiscussionLike",
+    "SharedCollection",
+    "SharedCollectionItem",
+    "SharedCollectionLike",
 ]
