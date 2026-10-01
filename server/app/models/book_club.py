@@ -19,6 +19,7 @@ class BookClub(Base):
     current_chapter_target = Column(String(100), nullable=True)
     meeting_schedule = Column(String(200), nullable=True)
     is_private = Column(Boolean, default=False)
+    invite_code = Column(String(40), unique=True, index=True, nullable=True)
     created_by_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

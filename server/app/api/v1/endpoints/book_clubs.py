@@ -1,9 +1,11 @@
 import re
+import random
+import string
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
@@ -26,6 +28,37 @@ def slugify(text: str) -> str:
     text = re.sub(r"[^\w\s-]", "", text)
     text = re.sub(r"[\s_-]+", "-", text)
     return text or str(uuid.uuid4())[:8]
+
+
+def generate_invite_code() -> str:
+    chars = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return f"PAPYR-CLUB-{chars}"
+
+
+def format_club_response(club: BookClub, current_user_id: Optional[str] = None) -> BookClubResponse:
+    member_count = len(club.members) if club.members else 0
+    is_joined = any(m.user_id == current_user_id for m in club.members) if (current_user_id and club.members) else False
+
+    return BookClubResponse(
+        id=club.id,
+        name=club.name,
+        slug=club.slug,
+        description=club.description,
+        category=club.category,
+        cover_image=club.cover_image,
+        current_book_title=club.current_book_title,
+        current_book_author=club.current_book_author,
+        current_chapter_target=club.current_chapter_target,
+        meeting_schedule=club.meeting_schedule,
+        is_private=club.is_private,
+        invite_code=club.invite_code,
+        created_by_id=club.created_by_id,
+        created_at=club.created_at,
+        updated_at=club.updated_at,
+        members_count=member_count,
+        is_joined=is_joined,
+        created_by=club.created_by,
+    )
 
 
 @router.get("", response_model=List[BookClubResponse])
@@ -55,35 +88,138 @@ async def list_book_clubs(
     result = await db.execute(query)
     clubs = result.scalars().all()
 
-    response = []
     user_id = current_user.id if current_user else None
+    return [format_club_response(c, user_id) for c in clubs]
 
-    for club in clubs:
-        member_count = len(club.members)
-        is_joined = any(m.user_id == user_id for m in club.members) if user_id else False
 
-        club_dict = {
-            "id": club.id,
-            "name": club.name,
-            "slug": club.slug,
-            "description": club.description,
-            "category": club.category,
-            "cover_image": club.cover_image,
-            "current_book_title": club.current_book_title,
-            "current_book_author": club.current_book_author,
-            "current_chapter_target": club.current_chapter_target,
-            "meeting_schedule": club.meeting_schedule,
-            "is_private": club.is_private,
-            "created_by_id": club.created_by_id,
-            "created_at": club.created_at,
-            "updated_at": club.updated_at,
-            "members_count": member_count,
-            "is_joined": is_joined,
-            "created_by": club.created_by,
-        }
-        response.append(BookClubResponse(**club_dict))
+@router.get("/mine", response_model=List[BookClubResponse])
+async def list_my_book_clubs(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List all clubs joined or created by the current user (public and private)."""
+    # Fetch clubs where current user is a member
+    query = (
+        select(BookClub)
+        .join(ClubMember, ClubMember.club_id == BookClub.id)
+        .where(ClubMember.user_id == current_user.id)
+        .options(selectinload(BookClub.members), selectinload(BookClub.created_by))
+        .order_by(BookClub.updated_at.desc())
+    )
+    result = await db.execute(query)
+    clubs = result.scalars().all()
 
-    return response
+    return [format_club_response(c, current_user.id) for c in clubs]
+
+
+@router.get("/code/{invite_code}", response_model=BookClubResponse)
+async def get_club_by_invite_code(
+    invite_code: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
+    """Fetch club info using invite code (e.g. PAPYR-CLUB-XXXXXX or without prefix)."""
+    clean_code = invite_code.strip().upper()
+    if not clean_code.startswith("PAPYR-CLUB-") and not clean_code.startswith("#PAPYR-CLUB-"):
+        lookup_code = f"PAPYR-CLUB-{clean_code.replace('#', '')}"
+    else:
+        lookup_code = clean_code.replace("#", "")
+
+    query = (
+        select(BookClub)
+        .where(
+            or_(
+                BookClub.invite_code == lookup_code,
+                BookClub.invite_code == clean_code,
+                BookClub.slug == invite_code.lower(),
+            )
+        )
+        .options(selectinload(BookClub.members), selectinload(BookClub.created_by))
+    )
+    result = await db.execute(query)
+    club = result.scalar_one_or_none()
+
+    if not club:
+        raise HTTPException(status_code=404, detail="Book club not found with this code")
+
+    user_id = current_user.id if current_user else None
+    return format_club_response(club, user_id)
+
+
+@router.post("/join-by-code", response_model=BookClubResponse)
+async def join_club_by_code(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Join a public or private club by its invite code."""
+    raw_code = payload.get("invite_code") or payload.get("code") or ""
+    clean_code = raw_code.strip().upper()
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Invite code is required")
+
+    if not clean_code.startswith("PAPYR-CLUB-") and not clean_code.startswith("#PAPYR-CLUB-"):
+        lookup_code = f"PAPYR-CLUB-{clean_code.replace('#', '')}"
+    else:
+        lookup_code = clean_code.replace("#", "")
+
+    query = (
+        select(BookClub)
+        .where(
+            or_(
+                BookClub.invite_code == lookup_code,
+                BookClub.invite_code == clean_code,
+                BookClub.slug == raw_code.strip().lower(),
+                BookClub.id == raw_code.strip(),
+            )
+        )
+        .options(selectinload(BookClub.members), selectinload(BookClub.created_by))
+    )
+    result = await db.execute(query)
+    club = result.scalar_one_or_none()
+
+    if not club:
+        raise HTTPException(status_code=404, detail="No book club matches this invite code")
+
+    club_id = club.id
+    member_check = await db.execute(
+        select(ClubMember).where(ClubMember.club_id == club_id, ClubMember.user_id == current_user.id)
+    )
+    if not member_check.scalar_one_or_none():
+        member = ClubMember(
+            id=str(uuid.uuid4()),
+            club_id=club_id,
+            user_id=current_user.id,
+            role="member",
+        )
+        db.add(member)
+        await db.commit()
+
+    count_res = await db.execute(
+        select(func.count(ClubMember.id)).where(ClubMember.club_id == club_id)
+    )
+    members_count = count_res.scalar() or 1
+
+    return BookClubResponse(
+        id=club.id,
+        name=club.name,
+        slug=club.slug,
+        description=club.description,
+        category=club.category,
+        cover_image=club.cover_image,
+        current_book_title=club.current_book_title,
+        current_book_author=club.current_book_author,
+        current_chapter_target=club.current_chapter_target,
+        meeting_schedule=club.meeting_schedule,
+        is_private=club.is_private,
+        invite_code=club.invite_code,
+        created_by_id=club.created_by_id,
+        created_at=club.created_at,
+        updated_at=club.updated_at,
+        members_count=members_count,
+        is_joined=True,
+        created_by=club.created_by,
+    )
 
 
 @router.post("", response_model=BookClubResponse, status_code=status.HTTP_201_CREATED)
@@ -103,6 +239,8 @@ async def create_book_club(
         slug = f"{base_slug}-{idx}"
         idx += 1
 
+    invite_code = generate_invite_code()
+
     club = BookClub(
         id=str(uuid.uuid4()),
         name=payload.name,
@@ -115,6 +253,7 @@ async def create_book_club(
         current_chapter_target=payload.current_chapter_target,
         meeting_schedule=payload.meeting_schedule,
         is_private=payload.is_private,
+        invite_code=invite_code,
         created_by_id=current_user.id,
     )
     db.add(club)
@@ -129,27 +268,15 @@ async def create_book_club(
     )
     db.add(member)
     await db.commit()
-    await db.refresh(club)
 
-    return BookClubResponse(
-        id=club.id,
-        name=club.name,
-        slug=club.slug,
-        description=club.description,
-        category=club.category,
-        cover_image=club.cover_image,
-        current_book_title=club.current_book_title,
-        current_book_author=club.current_book_author,
-        current_chapter_target=club.current_chapter_target,
-        meeting_schedule=club.meeting_schedule,
-        is_private=club.is_private,
-        created_by_id=club.created_by_id,
-        created_at=club.created_at,
-        updated_at=club.updated_at,
-        members_count=1,
-        is_joined=True,
-        created_by=current_user,
+    # Re-fetch with relationships
+    fresh = await db.execute(
+        select(BookClub)
+        .where(BookClub.id == club.id)
+        .options(selectinload(BookClub.members), selectinload(BookClub.created_by))
     )
+    club = fresh.scalar_one()
+    return format_club_response(club, current_user.id)
 
 
 @router.get("/{club_id}", response_model=BookClubResponse)
@@ -158,9 +285,13 @@ async def get_book_club(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
-    """Retrieve book club details by UUID or slug."""
+    """Retrieve book club details by UUID, slug, or invite code."""
     query = select(BookClub).where(
-        or_(BookClub.id == club_id, BookClub.slug == club_id)
+        or_(
+            BookClub.id == club_id,
+            BookClub.slug == club_id,
+            BookClub.invite_code == club_id,
+        )
     ).options(selectinload(BookClub.members), selectinload(BookClub.created_by))
     result = await db.execute(query)
     club = result.scalar_one_or_none()
@@ -169,27 +300,7 @@ async def get_book_club(
         raise HTTPException(status_code=404, detail="Book club not found")
 
     user_id = current_user.id if current_user else None
-    is_joined = any(m.user_id == user_id for m in club.members) if user_id else False
-
-    return BookClubResponse(
-        id=club.id,
-        name=club.name,
-        slug=club.slug,
-        description=club.description,
-        category=club.category,
-        cover_image=club.cover_image,
-        current_book_title=club.current_book_title,
-        current_book_author=club.current_book_author,
-        current_chapter_target=club.current_chapter_target,
-        meeting_schedule=club.meeting_schedule,
-        is_private=club.is_private,
-        created_by_id=club.created_by_id,
-        created_at=club.created_at,
-        updated_at=club.updated_at,
-        members_count=len(club.members),
-        is_joined=is_joined,
-        created_by=club.created_by,
-    )
+    return format_club_response(club, user_id)
 
 
 @router.post("/{club_id}/join", status_code=status.HTTP_200_OK)

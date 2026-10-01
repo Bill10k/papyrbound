@@ -590,9 +590,13 @@ export default function Home() {
                   <Users className="size-4 text-emerald-700" />
                   Community Book Clubs
                 </h3>
-                <span className="text-xs text-mono-500 font-mono">
-                  {liveClubs.length} Active
-                </span>
+                <Link
+                  href="/clubs"
+                  className="text-xs text-amber-800 hover:underline font-semibold flex items-center gap-1"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="size-3" />
+                </Link>
               </div>
 
               <div className="space-y-3">

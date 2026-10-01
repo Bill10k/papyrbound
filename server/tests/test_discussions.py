@@ -62,3 +62,32 @@ async def test_discussions_lifecycle():
         assert unlike_resp.status_code == 200
         assert unlike_resp.json()["is_liked"] is False
         assert unlike_resp.json()["likes_count"] == 0
+
+        # 7. Post a private discussion scoped to a club
+        priv_post_payload = {
+            "book_title": "Dune",
+            "book_author": "Frank Herbert",
+            "chapter_index": 1,
+            "chapter_title": "Chapter 1",
+            "content": "Secret note for my book club members only!",
+            "is_private": True,
+            "club_id": "test-club-123",
+        }
+        priv_create_resp = await ac.post("/api/v1/discussions", json=priv_post_payload, headers=auth_headers)
+        assert priv_create_resp.status_code == 201
+        assert priv_create_resp.json()["is_private"] is True
+        assert priv_create_resp.json()["club_id"] == "test-club-123"
+        priv_id = priv_create_resp.json()["id"]
+
+        # 8. Public listing should NOT include the private discussion
+        pub_disc_resp = await ac.get("/api/v1/discussions")
+        assert pub_disc_resp.status_code == 200
+        pub_posts = pub_disc_resp.json()
+        assert all(p["id"] != priv_id for p in pub_posts)
+
+        # 9. Club-scoped listing SHOULD return the private discussion
+        club_disc_resp = await ac.get("/api/v1/discussions?club_id=test-club-123")
+        assert club_disc_resp.status_code == 200
+        assert len(club_disc_resp.json()) == 1
+        assert club_disc_resp.json()[0]["id"] == priv_id
+

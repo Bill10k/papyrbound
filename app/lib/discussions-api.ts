@@ -1,6 +1,6 @@
 import { getStoredToken, UserProfile } from "./auth-api";
 
-const API_BASE = "http://127.0.0.1:8000/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export interface DiscussionComment {
   id: string;
@@ -13,6 +13,8 @@ export interface DiscussionComment {
   content: string;
   is_spoiler: boolean;
   spoiler_warning?: string | null;
+  is_private: boolean;
+  club_id?: string | null;
   created_at: string;
   updated_at: string;
   likes_count: number;
@@ -29,6 +31,8 @@ export interface CreateDiscussionPayload {
   content: string;
   is_spoiler?: boolean;
   spoiler_warning?: string;
+  is_private?: boolean;
+  club_id?: string;
 }
 
 function getAuthHeader(): Record<string, string> {
@@ -38,13 +42,17 @@ function getAuthHeader(): Record<string, string> {
 
 export async function fetchDiscussions(
   bookTitle?: string,
-  chapterIndex?: number
+  chapterIndex?: number,
+  clubId?: string
 ): Promise<DiscussionComment[]> {
   try {
     const params = new URLSearchParams();
     if (bookTitle && bookTitle.trim()) params.append("book_title", bookTitle.trim());
     if (chapterIndex !== undefined && chapterIndex !== null) {
       params.append("chapter_index", chapterIndex.toString());
+    }
+    if (clubId) {
+      params.append("club_id", clubId);
     }
 
     const url = `${API_BASE}/discussions${params.toString() ? `?${params.toString()}` : ""}`;

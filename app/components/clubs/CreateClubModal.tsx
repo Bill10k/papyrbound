@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, BookOpen, Calendar, Users, BookmarkPlus } from "lucide-react";
+import { X, Globe, Lock, BookmarkPlus, Sparkles } from "lucide-react";
 import { createClub, BookClub } from "@/app/lib/clubs-api";
 import { useApp } from "@/app/context/AppContext";
 
@@ -36,6 +36,7 @@ export default function CreateClubModal({
   const [currentBookAuthor, setCurrentBookAuthor] = useState("");
   const [currentChapterTarget, setCurrentChapterTarget] = useState("");
   const [meetingSchedule, setMeetingSchedule] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +63,7 @@ export default function CreateClubModal({
         current_book_author: currentBookAuthor.trim() || undefined,
         current_chapter_target: currentChapterTarget.trim() || undefined,
         meeting_schedule: meetingSchedule.trim() || undefined,
+        is_private: isPrivate,
         cover_image: "/covers/ashfall-01.webp",
       });
 
@@ -93,18 +95,18 @@ export default function CreateClubModal({
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative z-10 w-full max-w-lg rounded-2xl border border-[#d3c9b5] bg-mono-50 p-6 shadow-2xl space-y-5"
+          className="relative z-10 w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="size-9 rounded-xl bg-mono-800 text-mono-50 grid place-items-center">
+              <div className="size-9 rounded-xl bg-primary text-primary-foreground grid place-items-center">
                 <BookmarkPlus className="size-4.5" />
               </div>
               <div>
-                <h3 className="text-lg font-serif font-bold text-mono-900">
+                <h3 className="text-lg font-serif font-bold text-foreground">
                   Create a Book Club
                 </h3>
-                <p className="text-xs text-mono-500">
+                <p className="text-xs text-muted-foreground">
                   Read books together and set community discussion schedules.
                 </p>
               </div>
@@ -112,21 +114,65 @@ export default function CreateClubModal({
 
             <button
               onClick={onClose}
-              className="size-7 rounded-full bg-mono-200 text-mono-600 grid place-items-center hover:bg-mono-300 transition-colors"
+              className="size-7 rounded-full bg-secondary text-muted-foreground hover:text-foreground grid place-items-center transition-colors cursor-pointer"
             >
               <X className="size-4" />
             </button>
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-800">
+            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-xs text-rose-600 dark:text-rose-400">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            {/* Privacy Toggle */}
             <div>
-              <label className="block font-semibold text-mono-800 mb-1">
+              <label className="block font-semibold text-foreground mb-1.5">
+                Privacy & Access
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate(false)}
+                  className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                    !isPrivate
+                      ? "border-primary bg-primary/10 text-foreground font-semibold"
+                      : "border-border bg-secondary/30 text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <Globe className={`size-4 shrink-0 mt-0.5 ${!isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                  <div>
+                    <span className="block text-xs font-bold text-foreground">Public Club</span>
+                    <span className="text-[10px] text-muted-foreground font-normal leading-tight block">
+                      Discoverable by all readers in the community.
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPrivate(true)}
+                  className={`p-3 rounded-xl border text-left flex items-start gap-2.5 transition-all cursor-pointer ${
+                    isPrivate
+                      ? "border-primary bg-primary/10 text-foreground font-semibold"
+                      : "border-border bg-secondary/30 text-muted-foreground hover:border-border/80"
+                  }`}
+                >
+                  <Lock className={`size-4 shrink-0 mt-0.5 ${isPrivate ? "text-primary" : "text-muted-foreground"}`} />
+                  <div>
+                    <span className="block text-xs font-bold text-foreground">Private Circle</span>
+                    <span className="text-[10px] text-muted-foreground font-normal leading-tight block">
+                      Secret invite code only. Not listed publicly.
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-foreground mb-1">
                 Club Name *
               </label>
               <input
@@ -135,19 +181,19 @@ export default function CreateClubModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Brandon Sanderson Society"
-                className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-mono-800 mb-1">
+                <label className="block font-semibold text-foreground mb-1">
                   Genre / Category
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                  className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground outline-none focus:border-primary"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c} value={c}>
@@ -158,7 +204,7 @@ export default function CreateClubModal({
               </div>
 
               <div>
-                <label className="block font-semibold text-mono-800 mb-1">
+                <label className="block font-semibold text-foreground mb-1">
                   Meeting Schedule
                 </label>
                 <input
@@ -166,27 +212,27 @@ export default function CreateClubModal({
                   value={meetingSchedule}
                   onChange={(e) => setMeetingSchedule(e.target.value)}
                   placeholder="e.g. Sundays 7:00 PM GMT"
-                  className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                  className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-semibold text-mono-800 mb-1">
-                  First Reading Title
+                <label className="block font-semibold text-foreground mb-1">
+                  Current Reading Title
                 </label>
                 <input
                   type="text"
                   value={currentBookTitle}
                   onChange={(e) => setCurrentBookTitle(e.target.value)}
                   placeholder="e.g. The Way of Kings"
-                  className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                  className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-mono-800 mb-1">
+                <label className="block font-semibold text-foreground mb-1">
                   Author
                 </label>
                 <input
@@ -194,13 +240,13 @@ export default function CreateClubModal({
                   value={currentBookAuthor}
                   onChange={(e) => setCurrentBookAuthor(e.target.value)}
                   placeholder="e.g. Brandon Sanderson"
-                  className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                  className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-mono-800 mb-1">
+              <label className="block font-semibold text-foreground mb-1">
                 Target Milestone
               </label>
               <input
@@ -208,12 +254,12 @@ export default function CreateClubModal({
                 value={currentChapterTarget}
                 onChange={(e) => setCurrentChapterTarget(e.target.value)}
                 placeholder="e.g. Chapters 1 to 10 for Week 1"
-                className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-mono-800 mb-1">
+              <label className="block font-semibold text-foreground mb-1">
                 Club Description
               </label>
               <textarea
@@ -221,7 +267,7 @@ export default function CreateClubModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What is this club about? Who should join?"
-                className="w-full rounded-lg border border-[#d3c9b5] bg-mono-100 p-2.5 outline-none focus:border-mono-600"
+                className="w-full rounded-lg border border-border bg-secondary/50 p-2.5 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
               />
             </div>
 
@@ -229,7 +275,7 @@ export default function CreateClubModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-mono-600 hover:bg-mono-200 transition-colors font-medium cursor-pointer"
+                className="px-4 py-2 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors font-medium cursor-pointer"
               >
                 Cancel
               </button>
@@ -237,9 +283,9 @@ export default function CreateClubModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2 rounded-xl bg-mono-800 text-mono-50 hover:bg-mono-700 font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create Club"}
+                {loading ? "Creating..." : isPrivate ? "Create Private Circle" : "Create Public Club"}
               </button>
             </div>
           </form>

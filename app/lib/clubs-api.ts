@@ -1,6 +1,6 @@
 import { getStoredToken, UserProfile } from "./auth-api";
 
-const API_BASE = "http://127.0.0.1:8000/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 export interface BookClub {
   id: string;
@@ -14,6 +14,7 @@ export interface BookClub {
   current_chapter_target?: string | null;
   meeting_schedule?: string | null;
   is_private: boolean;
+  invite_code?: string | null;
   created_by_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -72,6 +73,64 @@ export async function fetchClubs(category?: string, search?: string): Promise<Bo
     console.warn("Could not fetch remote clubs, using fallback:", err);
     return [];
   }
+}
+
+export async function fetchMyClubs(): Promise<BookClub[]> {
+  const token = getStoredToken();
+  if (!token) return [];
+
+  try {
+    const res = await fetch(`${API_BASE}/clubs/mine`, {
+      headers: {
+        ...getAuthHeader(),
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch user clubs (${res.status})`);
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.warn("Could not fetch my clubs:", err);
+    return [];
+  }
+}
+
+export async function fetchClubByCode(inviteCode: string): Promise<BookClub> {
+  const res = await fetch(`${API_BASE}/clubs/code/${encodeURIComponent(inviteCode)}`, {
+    headers: {
+      ...getAuthHeader(),
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Book club not found with this code");
+  }
+
+  return await res.json();
+}
+
+export async function joinClubByCode(inviteCode: string): Promise<BookClub> {
+  const token = getStoredToken();
+  if (!token) throw new Error("You must be signed in to join a book club.");
+
+  const res = await fetch(`${API_BASE}/clubs/join-by-code`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ invite_code: inviteCode }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to join club with this invite code");
+  }
+
+  return await res.json();
 }
 
 export async function fetchClubDetails(clubIdOrSlug: string): Promise<BookClub> {

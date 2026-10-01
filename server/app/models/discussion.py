@@ -18,6 +18,8 @@ class DiscussionPost(Base):
     content = Column(Text, nullable=False)
     is_spoiler = Column(Boolean, default=False)
     spoiler_warning = Column(String(255), nullable=True)
+    is_private = Column(Boolean, default=False)
+    club_id = Column(String(36), ForeignKey("book_clubs.id", ondelete="CASCADE"), nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

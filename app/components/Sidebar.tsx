@@ -3,7 +3,7 @@
 import React from "react";
 import { useApp } from "../context/AppContext";
 
-export type PageTab = "home" | "library" | "collections" | "annotations" | "insights" | "settings";
+export type PageTab = "home" | "library" | "collections" | "clubs" | "annotations" | "insights" | "settings";
 
 interface SidebarProps {
   activeTab: PageTab;
@@ -11,6 +11,7 @@ interface SidebarProps {
   libraryCount: number;
   annotationsCount: number;
   collectionsCount?: number;
+  clubsCount?: number;
 }
 
 export default function Sidebar({
@@ -19,6 +20,7 @@ export default function Sidebar({
   libraryCount,
   annotationsCount,
   collectionsCount = 3,
+  clubsCount,
 }: SidebarProps) {
   const { user, hydrated, setAuthModalOpen } = useApp();
   const navItems = [
@@ -62,6 +64,21 @@ export default function Sidebar({
             strokeLinejoin="round"
             strokeWidth="1.75"
             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: "clubs" as PageTab,
+      label: "Book Clubs",
+      badge: clubsCount,
+      icon: (
+        <svg className="size-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.75"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
           />
         </svg>
       ),
@@ -169,44 +186,44 @@ export default function Sidebar({
       </div>
 
       {/* User Profile / Authentication */}
-<div className="pt-4 border-t border-border/60 px-2">
-  {!hydrated ? (
-    <div className="h-10 w-full rounded-lg bg-secondary/50 animate-pulse" />
-  ) : user ? (
-    <button
-      onClick={() => setAuthModalOpen(true)}
-      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
-    >
-      {user.avatar_url ? (
-        <img
-          src={user.avatar_url}
-          alt={user.display_name}
-          className="size-8 rounded-full object-cover border border-sidebar-border"
-        />
-      ) : (
-        <div className="size-8 rounded-full bg-foreground text-background font-bold text-xs grid place-items-center">
-          {user.display_name?.charAt(0).toUpperCase() || "R"}
-        </div>
-      )}
+      <div className="pt-4 border-t border-border/60 px-2">
+        {!hydrated ? (
+          <div className="h-10 w-full rounded-lg bg-secondary/50 animate-pulse" />
+        ) : user ? (
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors text-left"
+          >
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.display_name}
+                className="size-8 rounded-full object-cover border border-sidebar-border"
+              />
+            ) : (
+              <div className="size-8 rounded-full bg-foreground text-background font-bold text-xs grid place-items-center">
+                {user.display_name?.charAt(0).toUpperCase() || "R"}
+              </div>
+            )}
 
-      <div className="flex flex-col min-w-0">
-        <span className="text-[11px] font-semibold text-foreground leading-tight truncate">
-          {user.display_name}
-        </span>
-        <span className="text-[9px] text-muted-foreground font-mono truncate">
-          {user.email}
-        </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-semibold text-foreground leading-tight truncate">
+                {user.display_name}
+              </span>
+              <span className="text-[9px] text-muted-foreground font-mono truncate">
+                {user.email}
+              </span>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-border hover:bg-secondary transition-colors text-xs font-medium"
+          >
+            Log in
+          </button>
+        )}
       </div>
-    </button>
-  ) : (
-    <button
-      onClick={() => setAuthModalOpen(true)}
-      className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-border hover:bg-secondary transition-colors text-xs font-medium"
-    >
-      Log in
-    </button>
-  )}
-</div>
     </aside>
   );
 }

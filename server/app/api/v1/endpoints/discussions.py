@@ -17,16 +17,24 @@ from app.api.deps import get_current_user, get_optional_current_user
 
 router = APIRouter()
 
+
 @router.get("", response_model=List[DiscussionResponse])
 async def list_discussions(
     book_title: Optional[str] = Query(None),
     chapter_index: Optional[int] = Query(None),
+    club_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
-    """List chapter and book discussion comments with user profiles and like statuses."""
+    """List chapter and book discussion comments (public or scoped to a club)."""
     query = select(DiscussionPost).order_by(desc(DiscussionPost.created_at)).limit(limit)
+
+    if club_id:
+        query = query.where(DiscussionPost.club_id == club_id)
+    else:
+        # Default to public discussions
+        query = query.where(or_(DiscussionPost.is_private.is_(False), DiscussionPost.club_id.is_(None)))
 
     if book_title:
         query = query.where(DiscussionPost.book_title.ilike(f"%{book_title}%"))
@@ -60,6 +68,8 @@ async def list_discussions(
             "content": post.content,
             "is_spoiler": post.is_spoiler,
             "spoiler_warning": post.spoiler_warning,
+            "is_private": post.is_private,
+            "club_id": post.club_id,
             "created_at": post.created_at,
             "updated_at": post.updated_at,
             "likes_count": likes_count,
@@ -77,7 +87,7 @@ async def create_discussion_post(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Post a new discussion note on a book chapter."""
+    """Post a new discussion note on a book chapter (public or private club)."""
     post = DiscussionPost(
         id=str(uuid.uuid4()),
         book_title=payload.book_title,
@@ -89,6 +99,8 @@ async def create_discussion_post(
         content=payload.content,
         is_spoiler=payload.is_spoiler,
         spoiler_warning=payload.spoiler_warning,
+        is_private=payload.is_private,
+        club_id=payload.club_id,
     )
     db.add(post)
     await db.commit()
@@ -106,6 +118,8 @@ async def create_discussion_post(
         content=post.content,
         is_spoiler=post.is_spoiler,
         spoiler_warning=post.spoiler_warning,
+        is_private=post.is_private,
+        club_id=post.club_id,
         created_at=post.created_at,
         updated_at=post.updated_at,
         likes_count=0,

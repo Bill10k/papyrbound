@@ -89,3 +89,40 @@ async def test_book_clubs_lifecycle():
         leave_resp = await ac.post(f"/api/v1/clubs/{club_id}/leave", headers=user2_headers)
         assert leave_resp.status_code == 200
         assert leave_resp.json()["joined"] is False
+
+        # 7. Create a private club and verify invite code
+        private_club_payload = {
+            "name": "Secret Midnight Book Coven",
+            "category": "Mystery & Thriller",
+            "description": "Private readers only.",
+            "is_private": True,
+        }
+        priv_resp = await ac.post("/api/v1/clubs", json=private_club_payload, headers=auth_headers)
+        assert priv_resp.status_code == 201
+        priv_club = priv_resp.json()
+        assert priv_club["is_private"] is True
+        assert "PAPYR-CLUB-" in priv_club["invite_code"]
+        invite_code = priv_club["invite_code"]
+
+        # 8. Public listing should NOT include the private club
+        pub_list_resp = await ac.get("/api/v1/clubs")
+        assert pub_list_resp.status_code == 200
+        pub_clubs = pub_list_resp.json()
+        assert all(c["id"] != priv_club["id"] for c in pub_clubs)
+
+        # 9. Get club by invite code
+        code_resp = await ac.get(f"/api/v1/clubs/code/{invite_code}")
+        assert code_resp.status_code == 200
+        assert code_resp.json()["name"] == "Secret Midnight Book Coven"
+
+        # 10. Join private club via invite code
+        join_code_resp = await ac.post("/api/v1/clubs/join-by-code", json={"invite_code": invite_code}, headers=user2_headers)
+        assert join_code_resp.status_code == 200
+        assert join_code_resp.json()["is_joined"] is True
+
+        # 11. Verify user2 sees it in /mine
+        mine_resp = await ac.get("/api/v1/clubs/mine", headers=user2_headers)
+        assert mine_resp.status_code == 200
+        my_clubs = mine_resp.json()
+        assert any(c["id"] == priv_club["id"] for c in my_clubs)
+

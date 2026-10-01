@@ -15,6 +15,7 @@ class BookClubBase(BaseModel):
     current_chapter_target: Optional[str] = None
     meeting_schedule: Optional[str] = None
     is_private: bool = False
+    invite_code: Optional[str] = None
 
 
 class BookClubCreate(BookClubBase):

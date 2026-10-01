@@ -13,6 +13,8 @@ class DiscussionCreate(BaseModel):
     content: str
     is_spoiler: bool = False
     spoiler_warning: Optional[str] = None
+    is_private: bool = False
+    club_id: Optional[str] = None
 
 
 class DiscussionResponse(BaseModel):
@@ -28,6 +30,8 @@ class DiscussionResponse(BaseModel):
     content: str
     is_spoiler: bool
     spoiler_warning: Optional[str] = None
+    is_private: bool = False
+    club_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     likes_count: int = 0
