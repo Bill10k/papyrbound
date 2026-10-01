@@ -54,14 +54,15 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-10"
         />
 
         {/* Modal Window */}
@@ -69,12 +70,13 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
           initial={{ opacity: 0, scale: 0.94, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
-          className="relative w-full max-w-md overflow-hidden rounded-2xl border border-[#d3c9b5] bg-mono-50 p-6 shadow-2xl z-10 text-mono-800"
+          transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+          className="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl z-20 text-card-foreground"
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 size-8 rounded-full bg-mono-200/80 text-mono-600 grid place-items-center hover:bg-mono-300 transition-colors cursor-pointer z-20"
+            className="absolute top-4 right-4 size-8 rounded-full bg-secondary/80 text-muted-foreground hover:text-foreground grid place-items-center hover:bg-secondary transition-colors cursor-pointer z-20"
           >
             <X className="size-4" />
           </button>
@@ -131,16 +133,16 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
           <div className="space-y-4">
             {/* Share Code Pill */}
             <div>
-              <label className="text-[11px] font-medium text-mono-700 block mb-1.5 font-mono uppercase tracking-wider">
+              <label className="text-[11px] font-medium text-foreground block mb-1.5 font-mono uppercase tracking-wider">
                 Share Code
               </label>
               <div className="flex items-center gap-2">
-                <div className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#d3c9b5] bg-mono-100 font-mono text-sm font-bold text-mono-900 select-all">
+                <div className="flex-1 px-3.5 py-2.5 rounded-xl border border-border bg-secondary/50 font-mono text-sm font-bold text-foreground select-all">
                   {collection.share_code}
                 </div>
                 <button
                   onClick={copyCode}
-                  className="px-4 py-2.5 rounded-xl bg-mono-800 text-mono-50 hover:bg-mono-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
                 >
                   {copiedCode ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                   {copiedCode ? "Copied" : "Copy Code"}
@@ -150,7 +152,7 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
 
             {/* Direct Link */}
             <div>
-              <label className="text-[11px] font-medium text-mono-700 block mb-1.5 font-mono uppercase tracking-wider">
+              <label className="text-[11px] font-medium text-foreground block mb-1.5 font-mono uppercase tracking-wider">
                 Direct Web & Desktop Link
               </label>
               <div className="flex items-center gap-2">
@@ -158,11 +160,11 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
                   type="text"
                   readOnly
                   value={shareUrl}
-                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-[#d3c9b5] bg-mono-100 text-mono-700 select-all outline-none font-mono truncate"
+                  className="flex-1 px-3 py-2 text-xs rounded-xl border border-border bg-secondary/50 text-foreground select-all outline-none font-mono truncate"
                 />
                 <button
                   onClick={copyLink}
-                  className="px-4 py-2 rounded-xl border border-[#d3c9b5] bg-white hover:bg-mono-100 text-mono-900 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  className="px-4 py-2 rounded-xl border border-border bg-secondary text-foreground hover:bg-secondary/80 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
                 >
                   {copiedLink ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
                   {copiedLink ? "Link Copied!" : "Copy Link"}
@@ -170,7 +172,7 @@ export default function ShareCollectionModal({ collection, onClose }: ShareColle
               </div>
             </div>
 
-            <p className="text-[11px] text-mono-500 text-center pt-2">
+            <p className="text-[11px] text-muted-foreground text-center pt-2">
               Readers with Papyrbound can enter the code or click your link to explore this collection.
             </p>
           </div>

@@ -652,12 +652,6 @@ export default function CollectionsPage() {
         }}
       />
 
-      {/* SHARE MODAL */}
-      <ShareCollectionModal
-        collection={activeShareCollection}
-        onClose={() => setActiveShareCollection(null)}
-      />
-
       {/* PLAYLIST DETAIL MODAL (SPOTIFY TRACKLIST VIEW) */}
       <CollectionDetailModal
         collection={selectedSharedCollection}
@@ -665,6 +659,12 @@ export default function CollectionsPage() {
         onShare={(col) => setActiveShareCollection(col)}
         onDelete={handleDeleteSharedCollection}
         onLikeChange={handleLikeChange}
+      />
+
+      {/* SHARE MODAL */}
+      <ShareCollectionModal
+        collection={activeShareCollection}
+        onClose={() => setActiveShareCollection(null)}
       />
     </main>
   );
